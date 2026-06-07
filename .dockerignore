@@ -1,0 +1,8 @@
+.git
+.gitignore
+.vscode
+.env
+node_modules
+postgres_data
+*.md
+terminals
