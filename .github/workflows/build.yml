@@ -1,0 +1,22 @@
+name: Laravel CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check PHP Version
+        run: php -v
+
+      - name: Check Composer
+        run: composer --version
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist
