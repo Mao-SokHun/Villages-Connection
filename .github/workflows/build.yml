@@ -1,4 +1,4 @@
-name: Laravel Docker CI
+name: DevOps with PHP project
 
 on:
   push:
