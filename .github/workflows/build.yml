@@ -1,4 +1,4 @@
-name: Laravel CI
+name: Laravel Docker CI
 
 on:
   push:
@@ -12,11 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check PHP Version
-        run: php -v
+      - name: Build Containers
+        run: docker compose up -d --build
 
-      - name: Check Composer
-        run: composer --version
+      - name: Install Composer Dependencies
+        run: docker compose exec -T app composer install --no-interaction --prefer-dist
 
-      - name: Install Dependencies
-        run: composer install --no-interaction --prefer-dist
+      - name: Run Migrations
+        run: docker compose exec -T app php artisan migrate --force
+
+      - name: Clear Cache
+        run: docker compose exec -T app php artisan optimize:clear
+
+      - name: Verify Laravel
+        run: docker compose exec -T app php artisan --version
