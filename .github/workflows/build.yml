@@ -12,6 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pull Latest Code
+        shell: powershell
+        run: |
+          Set-Location "D:\Programming in University\PHP\Project\Viilages_Connection"
+
+          git pull origin main
+
       - name: Build Containers
         run: docker compose up -d --build
 
