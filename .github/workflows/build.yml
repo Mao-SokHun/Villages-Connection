@@ -15,7 +15,7 @@ jobs:
       - name: Pull Latest Code
         shell: powershell
         run: |
-          Set-Location "D:\Programming in University\PHP\Project\Viilages_Connection"
+          Set-Location "D:\Viilages_Connection"
 
           git pull origin main
 
