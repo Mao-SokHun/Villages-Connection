@@ -114,12 +114,16 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                             </div>
                             <div class="mb-3">
                                 <label for="password" class="form-label form-label-custom">New Password</label>
-                                <input type="password" name="password" id="password" class="form-control form-control-custom" minlength="8" required>
+                                <div class="password-input-wrap">
+                                    <input type="password" name="password" id="password" class="form-control form-control-custom" minlength="8" autocomplete="new-password" required>
+                                </div>
                                 <div class="form-text text-secondary small">At least 8 characters</div>
                             </div>
                             <div class="mb-4">
                                 <label for="confirm_password" class="form-label form-label-custom">Confirm New Password</label>
-                                <input type="password" name="confirm_password" id="confirm_password" class="form-control form-control-custom" minlength="8" required>
+                                <div class="password-input-wrap">
+                                    <input type="password" name="confirm_password" id="confirm_password" class="form-control form-control-custom" minlength="8" autocomplete="new-password" required>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-gradient w-100 py-3">
                                 <i class="fa-solid fa-lock"></i> Reset Password

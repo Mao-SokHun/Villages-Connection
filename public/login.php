@@ -1,6 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
-$page_title = 'Sign In';
+$page_title = __('auth.sign_in');
 $email = '';
 $errors = array();
 
@@ -12,6 +12,11 @@ if (isLoggedIn()) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
 
+    $ip_id = client_rate_limit_id();
+    if (!rate_limit_hit('login_form', $ip_id, 20, 900)) {
+        $errors[] = rate_limit_blocked_response('login_form', $ip_id, 900, false);
+    }
+
     if (isset($_POST['email'])) {
         $email = trim($_POST['email']);
     }
@@ -21,25 +26,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $password = $_POST['password'];
     }
 
-    if (login_is_locked($email)) {
+    if (count($errors) == 0 && login_is_locked($email)) {
         $wait = login_lock_remaining($email);
         $mins = (int) ceil($wait / 60);
         $errors[] = 'Too many failed attempts. Try again in about ' . $mins . ' minute(s).';
-    } elseif ($email == '' || $password == '') {
+    } elseif (count($errors) == 0 && ($email == '' || $password == '')) {
         $errors[] = 'Please enter both your email and password.';
-    } else {
+    } elseif (count($errors) == 0) {
         $sql = 'SELECT * FROM users WHERE email = :email';
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array('email' => $email));
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            if (user_is_banned($user)) {
+            if (user_is_deleted($user)) {
+                $errors[] = 'This account has been closed.';
+            } elseif (user_is_banned($user)) {
                 $reason = '';
                 if (isset($user['banned_reason']) && $user['banned_reason'] != '') {
                     $reason = ' Reason: ' . $user['banned_reason'];
                 }
                 $errors[] = 'This account has been suspended.' . $reason;
+            } elseif (user_needs_email_verification($user)) {
+                $errors[] = __('auth.verify_email_first');
             } else {
             require_once APP_PATH . '/Core/oauth.php';
             clear_login_fails($email);
@@ -71,7 +80,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                 <div class="col-md-5 auth-side d-none d-md-flex">
                     <div class="auth-side-inner">
                         <span class="hero-badge mb-3"><i class="fa-solid fa-seedling me-2"></i><?php echo SITE_NAME; ?></span>
-                        <h2 class="text-white mb-3">Welcome Back</h2>
+                        <h2 class="text-white mb-3"><?php echo __('auth.welcome_back'); ?></h2>
                         <p class="text-secondary">Sign in to manage your posts, share new content, and connect with the community.</p>
                         <ul class="auth-features">
                             <li><i class="fa-solid fa-check"></i> Create and publish posts</li>
@@ -84,10 +93,10 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <div class="auth-form-wrap p-4 p-md-5">
                         <div class="text-center mb-4 d-md-none">
                             <i class="fa-solid fa-lock text-warning fs-1 mb-2"></i>
-                            <h2>Sign In</h2>
+                            <h2><?php echo __('auth.sign_in'); ?></h2>
                         </div>
                         <div class="mb-4 d-none d-md-block">
-                            <h2 class="text-white mb-1">Sign In</h2>
+                            <h2 class="text-white mb-1"><?php echo __('auth.sign_in'); ?></h2>
                             <p class="text-secondary small mb-0">Access your member account</p>
                         </div>
 
@@ -104,27 +113,31 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <form action="login.php" method="POST">
                             <?php echo csrf_field(); ?>
                             <div class="mb-3">
-                                <label for="email" class="form-label form-label-custom">Email Address</label>
+                                <label for="email" class="form-label form-label-custom"><?php echo __('auth.email'); ?></label>
                                 <input type="email" name="email" id="email" class="form-control form-control-custom" value="<?php echo htmlspecialchars($email); ?>" required>
                             </div>
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <label for="password" class="form-label form-label-custom mb-0">Password</label>
-                                    <a href="forgot-password.php" class="small text-warning text-decoration-none">Forgot password?</a>
+                                    <label for="password" class="form-label form-label-custom mb-0"><?php echo __('auth.password'); ?></label>
+                                    <a href="forgot-password.php" class="small text-warning text-decoration-none"><?php echo __('auth.forgot_password'); ?></a>
                                 </div>
                                 <input type="password" name="password" id="password" class="form-control form-control-custom" required>
                             </div>
                             <button type="submit" class="btn-auth-submit mt-1">
                                 <i class="fa-solid fa-right-to-bracket"></i>
-                                <span>Sign In</span>
+                                <span><?php echo __('auth.sign_in'); ?></span>
                             </button>
                         </form>
+
+                        <?php if (in_array(__('auth.verify_email_first'), $errors, true)): ?>
+                        <p class="text-center mt-3 mb-0"><a href="resend-verification.php" class="small text-warning text-decoration-none"><?php echo __('auth.resend_verification'); ?></a></p>
+                        <?php endif; ?>
 
                         <?php require ROOT_PATH . '/app/Views/partials/social-auth.php'; ?>
 
                         <div class="text-center mt-4">
-                            <span class="text-secondary small">Don't have an account?</span>
-                            <a href="register.php" class="text-warning small text-decoration-none ms-1 fw-semibold">Register Now</a>
+                            <span class="text-secondary small"><?php echo __('auth.no_account'); ?></span>
+                            <a href="register.php" class="text-warning small text-decoration-none ms-1 fw-semibold"><?php echo __('nav.register'); ?></a>
                         </div>
 
                         <?php if (defined('APP_DEBUG') && APP_DEBUG): ?>

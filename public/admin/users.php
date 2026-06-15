@@ -64,11 +64,12 @@ if ($admin_post) {
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute(array('id' => $admin_post['id']));
                 $u = $stmt->fetch();
-                if ($u) {
-                    $sql = 'DELETE FROM users WHERE id = :id';
+                if ($u && !user_is_deleted($u)) {
+                    $sql = "UPDATE users SET account_status = 'deleted', deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = :id";
                     $stmt = $pdo->prepare($sql);
                     $stmt->execute(array('id' => $admin_post['id']));
-                    setFlashMessage('success', "User '" . $u['name'] . "' deleted.");
+                    log_activity($pdo, 'user.deleted', 'User #' . $admin_post['id']);
+                    setFlashMessage('success', "User '" . $u['name'] . "' closed.");
                 }
             } catch (PDOException $e) {
                 setFlashMessage('danger', 'Could not delete user.');
@@ -118,7 +119,7 @@ if ($list_sort == 'oldest') {
 }
 
 try {
-    $sql = "SELECT u.*, COUNT(p.id) as post_count
+    $sql = "SELECT u.*, COUNT(p.id) FILTER (WHERE p.status != 'Deleted') as post_count
             FROM users u
             LEFT JOIN posts p ON p.user_id = u.id" . $list_where . "
             GROUP BY u.id" . $list_order;
@@ -211,7 +212,9 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                                 <?php endif; ?>
                             </td>
                             <td class="text-center">
-                                <?php if (user_is_banned($u)): ?>
+                                <?php if (user_is_deleted($u)): ?>
+                                    <span class="badge bg-secondary">Closed</span>
+                                <?php elseif (user_is_banned($u)): ?>
                                     <span class="badge bg-danger" title="<?php echo htmlspecialchars($u['banned_reason']); ?>">Banned</span>
                                 <?php else: ?>
                                     <span class="badge bg-success">Active</span>
@@ -234,7 +237,9 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                                         <?php else: ?>
                                             <?php render_admin_action_button('users.php', 'role', $u['id'], array('class' => 'btn btn-sm btn-outline-custom text-info py-1 px-2', 'label' => 'Author', 'title' => 'Make author', 'value' => 'author')); ?>
                                         <?php endif; ?>
-                                        <?php render_admin_action_button('users.php', 'delete', $u['id'], array('class' => 'btn btn-sm btn-outline-custom text-danger py-1 px-2', 'icon' => 'fa-solid fa-trash-can', 'title' => 'Delete', 'confirm' => 'Delete this user? Their posts will stay but show no author.')); ?>
+                                        <?php if (!user_is_deleted($u)): ?>
+                                        <?php render_admin_action_button('users.php', 'delete', $u['id'], array('class' => 'btn btn-sm btn-outline-custom text-danger py-1 px-2', 'icon' => 'fa-solid fa-trash-can', 'title' => 'Close account', 'confirm' => 'Close this user account? Their data will be kept but hidden.')); ?>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span class="text-secondary small">You</span>
                                     <?php endif; ?>

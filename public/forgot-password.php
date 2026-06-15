@@ -5,7 +5,6 @@ require_once APP_PATH . '/Core/mail.php';
 $page_title = 'Forgot Password';
 $email = '';
 $errors = array();
-$sent = false;
 
 if (isLoggedIn()) {
     header('Location: index.php');
@@ -22,18 +21,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Please enter a valid email address.';
     } else {
-        $limit_key = $email . '|' . (isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'local');
-        if (!rate_limit_hit('forgot_password', $limit_key, 3, 3600)) {
-            $wait = rate_limit_remaining_seconds('forgot_password', $limit_key, 3600);
-            $mins = (int) ceil($wait / 60);
-            $errors[] = 'Too many requests. Please try again in about ' . $mins . ' minute(s).';
-        } else {
-            $sql = 'SELECT id, name, email FROM users WHERE email = :email';
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute(array('email' => $email));
-            $user = $stmt->fetch();
+        $sql = 'SELECT id, name, email FROM users WHERE email = :email';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array('email' => $email));
+        $user = $stmt->fetch();
 
-            if ($user) {
+        if ($user) {
+            $limit_key = $email . '|' . (isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'local');
+            $limit_max = 5;
+            $limit_window = 900;
+
+            if (!rate_limit_hit('forgot_password', $limit_key, $limit_max, $limit_window)) {
+                $wait = rate_limit_remaining_seconds('forgot_password', $limit_key, $limit_window);
+                $mins = (int) ceil($wait / 60);
+                $errors[] = 'Too many OTP requests. Please try again in about ' . $mins . ' minute(s), or use the last code if it is still valid (15 minutes).';
+            } else {
                 $otp = create_password_reset_otp($pdo, $user['id'], $user['email']);
                 $mail_ok = send_password_reset_otp_email($user['email'], $user['name'], $otp);
 
@@ -41,11 +43,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $errors[] = 'Could not send email right now. Please try again later.';
                 } else {
                     $_SESSION['reset_email'] = $user['email'];
-                    $sent = true;
+                    setFlashMessage('success', 'Check your email for the 6-digit OTP code.');
+                    header('Location: reset-password.php');
+                    exit;
                 }
-            } else {
-                $sent = true;
             }
+        } else {
+            $_SESSION['reset_email'] = $email;
+            setFlashMessage('success', 'Check your email for the 6-digit OTP code.');
+            header('Location: reset-password.php');
+            exit;
         }
     }
 }
@@ -86,14 +93,6 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         </div>
                         <?php endif; ?>
 
-                        <?php if ($sent): ?>
-                        <div class="alert alert-success">
-                            If an account exists for <strong><?php echo htmlspecialchars($email); ?></strong>, a 6-digit OTP has been sent to that email.
-                        </div>
-                        <a href="reset-password.php" class="btn btn-gradient w-100 py-3">
-                            <i class="fa-solid fa-key"></i> Enter OTP & Reset Password
-                        </a>
-                        <?php else: ?>
                         <form action="forgot-password.php" method="POST">
                             <?php echo csrf_field(); ?>
                             <div class="mb-4">
@@ -104,7 +103,6 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                                 <i class="fa-solid fa-paper-plane"></i> Send OTP Code
                             </button>
                         </form>
-                        <?php endif; ?>
 
                         <div class="text-center mt-4">
                             <a href="login.php" class="text-warning small text-decoration-none fw-semibold">

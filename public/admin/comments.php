@@ -20,7 +20,7 @@ if ($admin_post) {
         exit;
     }
     if ($admin_post['action'] == 'delete' && $admin_post['id'] > 0) {
-        $pdo->prepare('DELETE FROM post_comments WHERE id = :id')->execute(array('id' => $admin_post['id']));
+        soft_delete_comment($pdo, $admin_post['id']);
         setFlashMessage('success', 'Comment deleted.');
         header('Location: comments.php');
         exit;
@@ -39,7 +39,7 @@ if (isset($_GET['search'])) {
 
 $list_where = ' WHERE 1=1';
 $list_params = array();
-if ($filter == 'pending' || $filter == 'approved' || $filter == 'rejected') {
+if ($filter == 'pending' || $filter == 'approved' || $filter == 'rejected' || $filter == 'deleted') {
     $list_where .= ' AND c.status = :status';
     $list_params['status'] = $filter;
 }
@@ -72,6 +72,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
             <a href="comments.php?status=pending" class="btn btn-sm <?php echo $filter == 'pending' ? 'btn-gradient' : 'btn-outline-custom'; ?>">Pending</a>
             <a href="comments.php?status=approved" class="btn btn-sm <?php echo $filter == 'approved' ? 'btn-gradient' : 'btn-outline-custom'; ?>">Approved</a>
             <a href="comments.php?status=rejected" class="btn btn-sm <?php echo $filter == 'rejected' ? 'btn-gradient' : 'btn-outline-custom'; ?>">Rejected</a>
+            <a href="comments.php?status=deleted" class="btn btn-sm <?php echo $filter == 'deleted' ? 'btn-gradient' : 'btn-outline-custom'; ?>">Deleted</a>
             <a href="comments.php?status=all" class="btn btn-sm <?php echo $filter == 'all' ? 'btn-gradient' : 'btn-outline-custom'; ?>">All</a>
         </div>
     </div>
@@ -104,7 +105,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
             <tr>
                 <td class="small"><?php echo htmlspecialchars($c['author_name']); ?></td>
                 <td class="small table-cell-title" style="max-width:240px"><?php echo htmlspecialchars(excerpt($c['content'], 80)); ?></td>
-                <td class="small"><a href="../post.php?slug=<?php echo urlencode($c['post_slug']); ?>" class="footer-link" target="_blank"><?php echo htmlspecialchars(excerpt($c['post_title'], 30)); ?></a></td>
+                <td class="small"><a href="<?php echo htmlspecialchars(post_url($c['post_slug'], '../') . '#comments'); ?>" class="footer-link" target="_blank"><?php echo htmlspecialchars(excerpt($c['post_title'], 30)); ?></a></td>
                 <td><span class="badge <?php echo $c['status'] == 'approved' ? 'bg-success' : ($c['status'] == 'pending' ? 'bg-warning text-dark' : 'bg-danger'); ?>"><?php echo htmlspecialchars($c['status']); ?></span></td>
                 <td class="small table-cell-muted"><?php echo date('M j, Y', strtotime($c['created_at'])); ?></td>
                 <td class="text-end text-nowrap">
@@ -115,6 +116,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                     <?php render_admin_action_button('comments.php', 'reject', $c['id'], array('class' => 'btn btn-sm btn-outline-custom text-warning', 'icon' => 'fa-solid fa-ban', 'title' => 'Reject')); ?>
                     <?php endif; ?>
                     <?php render_admin_action_button('comments.php', 'delete', $c['id'], array('class' => 'btn btn-sm btn-outline-custom text-danger', 'icon' => 'fa-solid fa-trash', 'title' => 'Delete', 'confirm' => 'Delete comment?')); ?>
+                    <a href="<?php echo htmlspecialchars(post_url($c['post_slug'], '../') . '#comments'); ?>" class="btn btn-sm btn-outline-custom" target="_blank" title="View comment on post"><i class="fa-solid fa-eye"></i></a>
                 </td>
             </tr>
             <?php endforeach; ?>

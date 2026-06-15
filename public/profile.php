@@ -20,7 +20,7 @@ if ($profile_id > 0) {
     exit;
 }
 
-if (!$user) {
+if (!$user || !user_is_publicly_visible($user)) {
     $page_title = 'Profile Not Found';
     require_once ROOT_PATH . '/app/Views/layouts/header.php';
     echo '<div class="empty-state glass-panel my-5"><i class="fa-solid fa-user-slash"></i><h3>Profile not found</h3><p>This user account does not exist.</p><a href="index.php" class="btn btn-gradient mt-3">Go Home</a></div>';
@@ -28,8 +28,17 @@ if (!$user) {
     exit;
 }
 
+if (is_oauth_user($user)) {
+    require_once APP_PATH . '/Core/oauth.php';
+    $user = oauth_ensure_user_avatar($pdo, $user);
+}
+
 if (isLoggedIn() && (int) $_SESSION['user_id'] == (int) $user['id']) {
     $is_own_profile = true;
+}
+
+if ($is_own_profile && is_oauth_user($user)) {
+    refresh_user_session($pdo, (int) $user['id']);
 }
 
 $page_title = $user['name'] . ' — Profile';
@@ -66,10 +75,13 @@ if ($post_count > 0) {
     $posts_total_pages = (int) ceil($post_count / $posts_per_page);
 }
 
-$posts_sql = "SELECT title, slug, summary, image_url, image_alt, views, likes, created_at
-    FROM posts
-    WHERE user_id = :uid AND status = 'Published'
-    ORDER BY created_at DESC
+$posts_sql = "SELECT p.title, p.slug, p.summary, p.image_url, p.image_alt, p.views, p.likes, p.created_at,
+    p.video_type, p.video_url, p.location, p.is_featured,
+    c.name AS category_name, c.icon AS category_icon
+    FROM posts p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.user_id = :uid AND p.status = 'Published'
+    ORDER BY p.id DESC
     LIMIT :limit OFFSET :offset";
 $posts_stmt = $pdo->prepare($posts_sql);
 $posts_stmt->bindValue(':uid', (int) $user['id'], PDO::PARAM_INT);
@@ -114,7 +126,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             <div class="profile-layout">
                 <div class="profile-side">
                     <div class="profile-avatar-wrap">
-                        <?php echo render_user_avatar($user['name'], $avatar, 'user-avatar-xl'); ?>
+                        <?php echo render_user_avatar($user['name'], $avatar, 'user-avatar-xl', user_public_email($user)); ?>
                     </div>
                     <?php if ($user['role'] == 'admin'): ?>
                     <span class="dropdown-user-badge admin profile-role-badge">Admin</span>
@@ -127,9 +139,22 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <div class="profile-head">
                         <div>
                             <h1 class="profile-name"><?php echo htmlspecialchars($user['name']); ?></h1>
-                            <?php if ($is_own_profile): ?>
-                            <p class="profile-email"><i class="fa-solid fa-envelope"></i> <?php echo htmlspecialchars($user['email']); ?></p>
-                            <?php else: ?>
+                            <?php
+                            $profile_subtitle = user_account_subtitle($user);
+                            if ($is_own_profile && $profile_subtitle != ''):
+                                $profile_provider = resolve_oauth_provider($user);
+                            ?>
+                            <p class="profile-email">
+                                <?php if (user_has_managed_email($user) && ($profile_provider == 'facebook' || $profile_provider == 'google')): ?>
+                                <i class="fa-brands fa-<?php echo htmlspecialchars($profile_provider); ?>"></i>
+                                <?php elseif (user_has_managed_email($user)): ?>
+                                <i class="fa-solid fa-user-shield"></i>
+                                <?php else: ?>
+                                <i class="fa-solid fa-envelope"></i>
+                                <?php endif; ?>
+                                <?php echo htmlspecialchars($profile_subtitle); ?>
+                            </p>
+                            <?php elseif (!$is_own_profile): ?>
                             <p class="profile-email"><i class="fa-regular fa-calendar"></i> Member since <?php echo format_date($user['created_at']); ?></p>
                             <?php endif; ?>
                         </div>

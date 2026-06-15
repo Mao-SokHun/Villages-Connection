@@ -4,8 +4,8 @@ requireLogin();
 
 $user = get_user_by_id($pdo, $_SESSION['user_id']);
 if (!$user) {
-    setFlashMessage('danger', 'Account not found.');
-    header('Location: logout.php');
+    perform_logout('danger', 'Account not found.');
+    header('Location: login.php');
     exit;
 }
 
@@ -33,13 +33,20 @@ if (isset($user['avatar'])) {
     $avatar = $user['avatar'];
 }
 
+$is_oauth_user = is_oauth_user($user);
+$email_is_managed = user_has_managed_email($user);
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
 
     if (isset($_POST['name'])) {
         $name = trim($_POST['name']);
     }
-    if (isset($_POST['email'])) {
+    if ($email_is_managed) {
+        $email = $user['email'];
+    } elseif ($is_oauth_user) {
+        $email = $user['email'];
+    } elseif (isset($_POST['email'])) {
         $email = trim($_POST['email']);
     }
     if (isset($_POST['bio'])) {
@@ -70,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($name == '') {
         $errors[] = 'Name is required.';
     }
-    if ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (!$email_is_managed && !$is_oauth_user && ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL))) {
         $errors[] = 'Please enter a valid email address.';
     }
     if (strlen($bio) > 500) {
@@ -81,7 +88,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if ($new_password != '' || $confirm_password != '' || $current_password != '') {
-        if ($current_password == '') {
+        if ($is_oauth_user) {
+            $errors[] = 'Password changes are managed by your social login provider.';
+        } elseif ($current_password == '') {
             $errors[] = 'Enter your current password to change it.';
         } elseif (!password_verify($current_password, $user['password'])) {
             $errors[] = 'Current password is incorrect.';
@@ -92,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if (count($errors) == 0 && $email != $user['email']) {
+    if (count($errors) == 0 && !$email_is_managed && !$is_oauth_user && $email != $user['email']) {
         $sql = 'SELECT COUNT(*) FROM users WHERE email = :email AND id != :id';
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array('email' => $email, 'id' => $user['id']));
@@ -184,10 +193,15 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             <form method="POST" enctype="multipart/form-data" action="edit-profile.php">
                 <?php echo csrf_field(); ?>
                 <div class="profile-edit-preview mb-4">
-                    <?php echo render_user_avatar($name, $avatar, 'user-avatar-xl'); ?>
+                    <?php echo render_user_avatar($name, $avatar, 'user-avatar-xl', user_public_email($user)); ?>
                     <div>
                         <div class="text-white fw-semibold"><?php echo htmlspecialchars($name); ?></div>
-                        <div class="text-secondary small"><?php echo htmlspecialchars($email); ?></div>
+                        <?php
+                        $edit_subtitle = user_account_subtitle($user);
+                        if ($edit_subtitle != ''):
+                        ?>
+                        <div class="text-secondary small"><?php echo htmlspecialchars($edit_subtitle); ?></div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -197,10 +211,25 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <label class="form-label form-label-custom">Full Name *</label>
                         <input type="text" name="name" class="form-control form-control-custom" required value="<?php echo htmlspecialchars($name); ?>">
                     </div>
+                    <?php if ($email_is_managed): ?>
+                    <div class="col-md-6">
+                        <label class="form-label form-label-custom">Account</label>
+                        <input type="text" class="form-control form-control-custom" value="<?php echo htmlspecialchars(user_account_subtitle($user)); ?>" readonly>
+                        <div class="form-text text-secondary small"><?php echo htmlspecialchars(oauth_provider_label(resolve_oauth_provider($user) ?: 'Facebook')); ?> did not share an email. Your account uses social login only.</div>
+                    </div>
+                    <?php elseif ($is_oauth_user): ?>
+                    <div class="col-md-6">
+                        <label class="form-label form-label-custom">Email</label>
+                        <input type="email" class="form-control form-control-custom" value="<?php echo htmlspecialchars($email); ?>" readonly>
+                        <input type="hidden" name="email" value="<?php echo htmlspecialchars($email); ?>">
+                        <div class="form-text text-secondary small">Email is linked to your <?php echo htmlspecialchars(oauth_provider_label(resolve_oauth_provider($user))); ?> account.</div>
+                    </div>
+                    <?php else: ?>
                     <div class="col-md-6">
                         <label class="form-label form-label-custom">Email *</label>
                         <input type="email" name="email" class="form-control form-control-custom" required value="<?php echo htmlspecialchars($email); ?>">
                     </div>
+                    <?php endif; ?>
                     <div class="col-12">
                         <label class="form-label form-label-custom">Bio</label>
                         <textarea name="bio" class="form-control form-control-custom" rows="4" maxlength="500" placeholder="Tell readers about yourself..."><?php echo htmlspecialchars($bio); ?></textarea>
@@ -239,6 +268,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     </div>
                 </div>
 
+                <?php if (!$is_oauth_user): ?>
                 <div class="password-settings-card settings-section mb-4">
                     <div class="settings-section-head password-settings-head">
                         <div class="password-settings-title">
@@ -287,6 +317,12 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         </div>
                     </div>
                 </div>
+                <?php else: ?>
+                <div class="settings-section mb-4 glass-panel-sm p-3">
+                    <h5 class="text-white mb-2"><i class="fa-solid fa-lock text-secondary me-2"></i>Password</h5>
+                    <p class="text-secondary small mb-0">You signed in with a social account. Password changes are managed by Google or Facebook.</p>
+                </div>
+                <?php endif; ?>
 
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-gradient">
@@ -304,7 +340,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <span class="danger-zone-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
                     <div>
                         <h5 class="danger-zone-title mb-1">Danger Zone</h5>
-                        <p class="danger-zone-subtitle mb-0">Permanent actions that cannot be undone</p>
+                        <p class="danger-zone-subtitle mb-0">Close your account and sign out</p>
                     </div>
                 </div>
 
@@ -312,8 +348,8 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <div class="danger-zone-item">
                         <span class="danger-zone-item-icon"><i class="fa-solid fa-user-slash"></i></span>
                         <div>
-                            <strong>Account removed</strong>
-                            <p>Your profile, login, and personal settings will be deleted.</p>
+                            <strong>Account closed</strong>
+                            <p>Your profile and login will be disabled. You cannot sign in again.</p>
                         </div>
                     </div>
                     <div class="danger-zone-item">
@@ -326,14 +362,20 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <div class="danger-zone-item">
                         <span class="danger-zone-item-icon"><i class="fa-solid fa-image"></i></span>
                         <div>
-                            <strong>Data erased</strong>
-                            <p>Your avatar and account data will be permanently removed.</p>
+                            <strong>Data kept</strong>
+                            <p>Your data stays in the database but is hidden from the site.</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="danger-zone-footer">
-                    <p class="danger-zone-note"><i class="fa-solid fa-circle-info"></i> You will need your password and must type <strong>DELETE</strong> to confirm.</p>
+                    <p class="danger-zone-note"><i class="fa-solid fa-circle-info"></i>
+                        <?php if ($is_oauth_user): ?>
+                        Enter your account email to confirm account closure.
+                        <?php else: ?>
+                        Enter your password to confirm account closure.
+                        <?php endif; ?>
+                    </p>
                     <a href="delete-account.php" class="btn btn-danger danger-zone-btn">
                         <i class="fa-solid fa-trash-can"></i> Delete My Account
                     </a>

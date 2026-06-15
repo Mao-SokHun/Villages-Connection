@@ -60,7 +60,23 @@
 
 <?php displayFlashMessage(); ?>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo $base_path; ?>js/main.js"></script>
+<div class="modal fade confirm-action-modal" id="confirmActionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered confirm-action-dialog">
+        <div class="modal-content flash-modal-content confirm-action-content">
+            <div class="modal-body confirm-action-body text-center">
+                <div class="confirm-action-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h4 class="confirm-action-title" id="confirmActionTitle">Confirm</h4>
+                <p class="confirm-action-text" id="confirmActionMessage">Are you sure?</p>
+                <div class="confirm-action-buttons">
+                    <button type="button" class="btn btn-outline-custom px-4" data-bs-dismiss="modal" id="confirmActionCancelBtn">Cancel</button>
+                    <button type="button" class="btn btn-danger px-4" id="confirmActionBtn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="<?php echo $base_path; ?>js/main.js?v=<?php echo asset_version('js/main.js'); ?>" defer></script>
 </body>
 </html>

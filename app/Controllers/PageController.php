@@ -15,6 +15,8 @@ class PageController extends Controller
         $page_description = SITE_DESC;
         if (isset($options['description'])) {
             $page_description = $options['description'];
+        } elseif (function_exists('site_default_meta_description')) {
+            $page_description = site_default_meta_description();
         }
 
         $page_breadcrumbs = array();
@@ -34,8 +36,13 @@ class PageController extends Controller
 
     public function about()
     {
+        $description = trim(get_setting('seo_about_description', ''));
+        if ($description == '') {
+            $description = 'Learn about ' . SITE_NAME . ' — a community social platform for sharing photos, videos, and local updates.';
+        }
+
         $this->renderPage('about', 'About Us', array(
-            'description' => 'Learn about ' . SITE_NAME . ' — a community social platform for sharing photos, videos, and local updates.',
+            'description' => $description,
             'breadcrumbs' => array(
                 array('label' => 'Home', 'url' => 'index.php'),
                 array('label' => 'About Us', 'url' => '')

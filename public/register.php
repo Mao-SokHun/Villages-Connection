@@ -1,6 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
-$page_title = 'Create Account';
+$page_title = __('auth.register');
 $name = '';
 $email = '';
 $errors = array();
@@ -19,6 +19,11 @@ if (!registration_is_enabled()) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
 
+    $ip_id = client_rate_limit_id();
+    if (!rate_limit_hit('register_form', $ip_id, 5, 3600)) {
+        $errors[] = rate_limit_blocked_response('register_form', $ip_id, 3600, false);
+    }
+
     if (isset($_POST['name'])) {
         $name = trim($_POST['name']);
     }
@@ -36,19 +41,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $confirm_password = $_POST['confirm_password'];
     }
 
-    if ($name == '') {
+    if (count($errors) == 0 && $name == '') {
         $errors[] = 'Full name is required.';
     }
-    if ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (count($errors) == 0 && ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL))) {
         $errors[] = 'Please enter a valid email address.';
     }
-    if (strlen($password) < 8) {
+    if (count($errors) == 0 && strlen($password) < 8) {
         $errors[] = 'Password must be at least 8 characters long.';
     }
-    if ($password != $confirm_password) {
+    if (count($errors) == 0 && $password != $confirm_password) {
         $errors[] = 'Passwords do not match.';
     }
-    if (!isset($_POST['agree_terms']) || $_POST['agree_terms'] != '1') {
+    if (count($errors) == 0 && (!isset($_POST['agree_terms']) || $_POST['agree_terms'] != '1')) {
         $errors[] = 'You must agree to the Terms of Service and Privacy Policy.';
     }
 
@@ -73,8 +78,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $user = get_user_by_id($pdo, $new_id);
 
             require_once APP_PATH . '/Core/oauth.php';
-            login_user_session($user);
+            require_once APP_PATH . '/Core/mail.php';
             log_activity($pdo, 'user.registered', $email);
+
+            if (email_verification_required()) {
+                issue_verification_for_new_user($pdo, $new_id);
+                setFlashMessage('info', __('auth.check_email_verify'));
+                header('Location: resend-verification.php');
+                exit;
+            }
+
+            mark_user_email_verified($pdo, $new_id);
+            login_user_session($user);
+            send_welcome_email($email, $name);
             setFlashMessage('success', 'Welcome to ' . SITE_NAME . ', ' . $name . '! Create your first post to get started.');
             header('Location: admin/posts.php?action=add');
             exit;

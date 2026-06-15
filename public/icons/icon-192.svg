@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Village Connect">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  <path fill="url(#g)" d="M128 300c0-79 64-144 144-144h16c72 0 128 48 128 112 0 64-56 112-128 112h-20l-52 44v-48c-52-8-88-44-88-76z"/>
+  <path fill="#f8fafc" d="M208 220h96v16h-96zm0 40h72v16h-72z"/>
+  <path fill="#fbbf24" d="M248 132l18 36 40 6-29 28 7 40-36-19-36 19 7-40-29-28 40-6z"/>
+</svg>

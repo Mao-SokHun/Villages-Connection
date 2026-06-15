@@ -13,7 +13,14 @@ $migrations = array(
     'migrate_categories.php',
     'migrate_admin_features.php',
     'migrate_member_features.php',
-    'migrate_recommendations.php'
+    'migrate_recommendations.php',
+    'migrate_soft_delete.php',
+    'migrate_contact_support.php',
+    'migrate_cloudinary.php',
+    'migrate_phase2.php',
+    'migrate_phase3.php',
+    'migrate_phase4.php',
+    'migrate_phase5.php',
 );
 
 try {

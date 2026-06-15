@@ -1,1 +1,4 @@
 .env
+docker/certs/*.key
+docker/certs/*.crt
+storage/backups/*.sql.gz

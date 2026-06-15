@@ -1,23 +1,5 @@
 <?php
 
-if (session_status() == PHP_SESSION_NONE) {
-    $session_secure = false;
-    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') {
-        $session_secure = true;
-    }
-
-    session_set_cookie_params(array(
-        'lifetime' => 0,
-        'path' => '/',
-        'secure' => $session_secure,
-        'httponly' => true,
-        'samesite' => 'Lax'
-    ));
-
-    ini_set('session.use_strict_mode', '1');
-    session_start();
-}
-
 function loadEnv($path)
 {
     if (!file_exists($path)) {
@@ -47,6 +29,23 @@ function loadEnv($path)
 
 loadEnv(__DIR__ . '/../.env');
 
+require_once __DIR__ . '/../app/Core/rate_limit.php';
+require_once __DIR__ . '/../app/Core/security.php';
+normalize_https_request();
+
+if (session_status() == PHP_SESSION_NONE) {
+    session_set_cookie_params(array(
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => request_is_https(),
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ));
+
+    ini_set('session.use_strict_mode', '1');
+    session_start();
+}
+
 $db_host = getenv('DB_HOST');
 if ($db_host == false || $db_host == '') {
     $db_host = '127.0.0.1';
@@ -73,7 +72,8 @@ define('DB_USER', $db_user);
 
 $db_pass = getenv('DB_PASSWORD');
 if ($db_pass == false || $db_pass == '') {
-    $db_pass = '4944';
+    http_response_code(500);
+    exit('Database configuration error: DB_PASSWORD is not set. Configure it in your .env file.');
 }
 define('DB_PASS', $db_pass);
 
@@ -83,7 +83,10 @@ define('SITE_DESC', 'Share everyday moments, stories, and creative content — l
 
 $site_contact = getenv('SITE_CONTACT_EMAIL');
 if ($site_contact == false || $site_contact == '') {
-    $site_contact = 'admin@admin.com';
+    $site_contact = getenv('MAIL_FROM');
+}
+if ($site_contact == false || $site_contact == '') {
+    $site_contact = 'villagesconnection@gmail.com';
 }
 define('SITE_CONTACT_EMAIL', $site_contact);
 
@@ -93,8 +96,24 @@ if ($app_url == false || $app_url == '') {
 }
 define('APP_URL', $app_url);
 
+$app_env = getenv('APP_ENV');
+if ($app_env == false || $app_env == '') {
+    $app_env = 'local';
+}
+define('APP_ENV', $app_env);
+
 $app_debug = getenv('APP_DEBUG');
-define('APP_DEBUG', ($app_debug === 'true' || $app_debug === '1'));
+$debug_on = ($app_debug === 'true' || $app_debug === '1');
+if (APP_ENV === 'production') {
+    $debug_on = false;
+}
+define('APP_DEBUG', $debug_on);
+
+if (!APP_DEBUG) {
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+}
 
 function setFlashMessage($type, $message)
 {
@@ -165,9 +184,15 @@ function isLoggedIn()
 
 function isAdmin()
 {
+    global $pdo;
+    if (isset($pdo) && $pdo instanceof PDO) {
+        return is_admin_user($pdo);
+    }
+
     if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'admin') {
         return true;
     }
+
     return false;
 }
 
@@ -175,19 +200,60 @@ function requireLogin()
 {
     if (!isLoggedIn()) {
         setFlashMessage('warning', 'Please login to continue.');
-        header('Location: login.php');
-        exit;
+        redirect_to('login.php');
+    }
+
+    global $pdo;
+    validate_active_session($pdo);
+}
+
+function perform_logout($flash_type = '', $flash_message = '')
+{
+    $_SESSION = array();
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+    }
+    session_destroy();
+    session_start();
+    if ($flash_type != '' && $flash_message != '') {
+        setFlashMessage($flash_type, $flash_message);
+    }
+}
+
+function logout_closed_account()
+{
+    perform_logout('warning', 'This account has been closed.');
+    redirect_to('login.php');
+}
+
+function logout_banned_account()
+{
+    perform_logout('warning', 'This account has been suspended.');
+    redirect_to('login.php');
+}
+
+function requireStaff()
+{
+    requireLogin();
+
+    global $pdo;
+    if (!is_staff_user($pdo)) {
+        setFlashMessage('danger', 'Access denied.');
+        redirect_to('index.php');
     }
 }
 
 function requireAdmin()
 {
-    if (!isAdmin()) {
+    requireLogin();
+
+    global $pdo;
+    if (!is_admin_user($pdo)) {
         setFlashMessage('danger', 'Access denied. Administrator privileges required.');
-        header('Location: index.php');
-        exit;
+        redirect_to('index.php');
     }
 }
 
-require_once __DIR__ . '/../app/Core/security.php';
+require_once __DIR__ . '/../app/Core/routes.php';
 send_security_headers();

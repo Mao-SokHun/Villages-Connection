@@ -1,6 +1,16 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
-$page_title = 'Home';
+
+$page_title = trim(get_setting('seo_home_title', 'Home'));
+if ($page_title == '') {
+    $page_title = 'Home';
+}
+
+$page_description = trim(get_setting('seo_home_description', ''));
+if ($page_description == '') {
+    $page_description = site_default_meta_description();
+}
+
 require_once ROOT_PATH . '/app/Views/layouts/header.php';
 
 $cat_slug = '';
@@ -34,6 +44,7 @@ if ($page < 1) {
 $per_page = 9;
 
 $where = " WHERE p.status = 'Published'";
+$where .= sql_hide_inactive_authors('u');
 $params = array();
 
 if ($cat_slug != '') {
@@ -41,7 +52,7 @@ if ($cat_slug != '') {
     $params['cat_slug'] = $cat_slug;
 }
 if ($search != '') {
-    $where .= ' AND (p.title ILIKE :search OR p.summary ILIKE :search OR p.content ILIKE :search OR p.location ILIKE :search)';
+    $where .= ' AND (p.title ILIKE :search OR p.summary ILIKE :search OR p.content ILIKE :search OR p.location ILIKE :search OR u.name ILIKE :search OR c.name ILIKE :search)';
     $params['search'] = '%' . $search . '%';
 }
 if ($author_id > 0) {
@@ -59,7 +70,7 @@ if ($sort == 'following') {
     }
 }
 
-$count_sql = 'SELECT COUNT(*) FROM posts p LEFT JOIN categories c ON p.category_id = c.id' . $where;
+$count_sql = 'SELECT COUNT(*) FROM posts p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN users u ON p.user_id = u.id' . $where;
 $count_stmt = $pdo->prepare($count_sql);
 $count_stmt->execute($params);
 $total_posts = (int) $count_stmt->fetchColumn();
@@ -77,9 +88,9 @@ if ($page < 1) {
 
 $offset = ($page - 1) * $per_page;
 
-$order = ' ORDER BY p.created_at DESC';
+$order = ' ORDER BY p.id DESC';
 if ($sort == 'popular') {
-    $order = ' ORDER BY p.views DESC, p.likes DESC';
+    $order = ' ORDER BY p.views DESC, p.likes DESC, p.id DESC';
 }
 
 $query = "SELECT p.*, c.name as category_name, c.slug as category_slug, c.icon as category_icon,
@@ -96,8 +107,8 @@ $featured = $pdo->query("SELECT p.*, c.name as category_name, c.slug as category
     FROM posts p
     LEFT JOIN categories c ON p.category_id = c.id
     LEFT JOIN users u ON p.user_id = u.id
-    WHERE p.status = 'Published' AND p.is_featured = TRUE
-    ORDER BY p.created_at DESC LIMIT 3")->fetchAll();
+    WHERE p.status = 'Published' AND p.is_featured = TRUE" . sql_hide_inactive_authors('u') . "
+    ORDER BY p.id DESC LIMIT 3")->fetchAll();
 
 if (count($featured) == 0 && $total_posts > 0 && $page == 1 && $search == '') {
     $feat_sql = "SELECT p.*, c.name as category_name, c.slug as category_slug, c.icon as category_icon, u.name as author_name
@@ -152,13 +163,27 @@ if ($author_id > 0) {
     <div class="hero-glow"></div>
     <div class="row align-items-center g-4 px-md-3">
         <div class="col-lg-7">
+            <?php if (isLoggedIn()): ?>
+            <span class="hero-badge"><i class="fa-solid fa-hand-sparkles me-2"></i>Welcome back</span>
+            <h1 class="display-5 text-white mb-3 lh-sm">Hi, <?php echo htmlspecialchars($_SESSION['user_name']); ?><br><span class="text-gradient-gold">Your Feed</span></h1>
+            <p class="text-secondary mb-4 lead-sm">Catch up on community posts, follow authors, and share your own updates.</p>
+            <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-md-start">
+                <a href="#posts-feed" class="btn btn-gradient px-4 py-3"><i class="fa-solid fa-images"></i> Browse Feed</a>
+                <a href="index.php?sort=following" class="btn btn-outline-custom px-4 py-3"><i class="fa-solid fa-user-group"></i> Following</a>
+                <a href="<?php echo create_post_url(); ?>" class="btn btn-outline-custom px-4 py-3"><i class="fa-solid fa-plus"></i> Create Post</a>
+                <?php if (isAdmin() || (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'author')): ?>
+                <a href="admin/dashboard.php" class="btn btn-outline-custom px-4 py-3"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+                <?php endif; ?>
+            </div>
+            <?php else: ?>
             <span class="hero-badge"><i class="fa-solid fa-seedling me-2"></i><?php echo SITE_TAGLINE; ?></span>
             <h1 class="display-5 text-white mb-3 lh-sm">Your Community<br><span class="text-gradient-gold">Social Feed</span></h1>
             <p class="text-secondary mb-4 lead-sm"><?php echo SITE_DESC; ?></p>
             <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-md-start">
                 <a href="#posts-feed" class="btn btn-gradient px-4 py-3"><i class="fa-solid fa-images"></i> Browse Feed</a>
-                <a href="<?php echo create_post_url(); ?>" class="btn btn-outline-custom px-4 py-3"><i class="fa-solid fa-plus"></i> Create Post</a>
+                <a href="register.php" class="btn btn-outline-custom px-4 py-3"><i class="fa-solid fa-user-plus"></i> Join Free</a>
             </div>
+            <?php endif; ?>
         </div>
         <div class="col-lg-5">
             <div class="stats-glass row g-3 text-center">
@@ -175,9 +200,34 @@ if ($author_id > 0) {
         </div>
     </div>
 </section>
+<?php endif; ?>
 
-<?php if (count($featured) > 0): ?>
-<section class="mb-5 reveal">
+<?php if ($sort == 'following'): ?>
+<div class="feed-header glass-panel p-3 mb-4 reveal">
+    <h2 class="h5 text-white mb-1"><i class="fa-solid fa-user-group text-info me-2"></i>Following Feed</h2>
+    <p class="text-secondary small mb-0">Posts from members you follow.</p>
+</div>
+<?php elseif ($author_id > 0):
+    $author_user = get_user_by_id($pdo, $author_id);
+?>
+<div class="feed-header glass-panel p-3 mb-4 reveal">
+    <h2 class="h5 text-white mb-1"><i class="fa-solid fa-user text-warning me-2"></i><?php echo $author_user ? htmlspecialchars($author_user['name']) . "'s Posts" : 'Member Posts'; ?></h2>
+</div>
+<?php endif; ?>
+
+<div class="category-scroll-wrap mb-4 reveal d-lg-none">
+    <div class="category-scroll">
+        <a href="<?php echo build_page_url(array_merge($page_params, array('page' => ''))); ?>" class="cat-pill <?php if ($cat_slug == '') echo 'active'; ?>">All</a>
+        <?php foreach ($all_cats as $sc): ?>
+        <a href="<?php echo build_page_url(array_merge($page_params, array('cat' => $sc['slug'], 'page' => ''))); ?>" class="cat-pill <?php if ($cat_slug == $sc['slug']) echo 'active'; ?>">
+            <?php echo render_category_icon($sc['icon'], 'me-1'); ?> <?php echo htmlspecialchars($sc['name']); ?>
+        </a>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<?php if ($show_hero && count($featured) > 0): ?>
+<section class="mb-5 reveal" id="featured-posts">
     <div class="section-header mb-3">
         <h2 class="h4 text-white mb-0"><i class="fa-solid fa-star text-warning me-2"></i>Featured Posts</h2>
         <p class="text-secondary small mb-0">Popular posts picked for the community feed</p>
@@ -187,8 +237,9 @@ if ($author_id > 0) {
         <div class="col-md-4">
             <article class="news-card glass-panel h-100 news-card-featured">
                 <a href="post.php?slug=<?php echo urlencode($fp['slug']); ?>" class="news-card-media">
-                    <?php if (!empty($fp['image_url']) && file_exists(PUBLIC_PATH . '/uploads/' . $fp['image_url'])): ?>
-                        <img src="<?php echo media_url($fp['image_url'], ''); ?>" alt="">
+                    <?php $fp_media = post_card_media($fp); ?>
+                    <?php if ($fp_media['url'] != ''): ?>
+                        <img src="<?php echo htmlspecialchars($fp_media['url']); ?>" alt="<?php echo htmlspecialchars($fp_media['alt']); ?>">
                     <?php else: ?>
                         <div class="news-card-placeholder"><?php
                             $fp_icon = 'fa-image';
@@ -225,34 +276,9 @@ if ($author_id > 0) {
     </div>
 </section>
 <?php endif; ?>
-<?php endif; ?>
-
-<?php if ($sort == 'following'): ?>
-<div class="feed-header glass-panel p-3 mb-4 reveal">
-    <h2 class="h5 text-white mb-1"><i class="fa-solid fa-user-group text-info me-2"></i>Following Feed</h2>
-    <p class="text-secondary small mb-0">Posts from members you follow.</p>
-</div>
-<?php elseif ($author_id > 0):
-    $author_user = get_user_by_id($pdo, $author_id);
-?>
-<div class="feed-header glass-panel p-3 mb-4 reveal">
-    <h2 class="h5 text-white mb-1"><i class="fa-solid fa-user text-warning me-2"></i><?php echo $author_user ? htmlspecialchars($author_user['name']) . "'s Posts" : 'Member Posts'; ?></h2>
-</div>
-<?php endif; ?>
-
-<div class="category-scroll-wrap mb-4 reveal d-lg-none">
-    <div class="category-scroll">
-        <a href="<?php echo build_page_url(array_merge($page_params, array('page' => ''))); ?>" class="cat-pill <?php if ($cat_slug == '') echo 'active'; ?>">All</a>
-        <?php foreach ($all_cats as $sc): ?>
-        <a href="<?php echo build_page_url(array_merge($page_params, array('cat' => $sc['slug'], 'page' => ''))); ?>" class="cat-pill <?php if ($cat_slug == $sc['slug']) echo 'active'; ?>">
-            <?php echo render_category_icon($sc['icon'], 'me-1'); ?> <?php echo htmlspecialchars($sc['name']); ?>
-        </a>
-        <?php endforeach; ?>
-    </div>
-</div>
 
 <section id="posts-feed" class="row g-4 mb-5">
-    <aside class="col-lg-3">
+    <aside class="col-lg-3 d-none d-lg-block">
         <div class="glass-panel p-4 sticky-sidebar reveal">
             <h5 class="text-white mb-3"><i class="fa-solid fa-filter text-warning me-2"></i>Browse</h5>
             <?php if ($search != ''): ?>
@@ -330,8 +356,9 @@ if ($author_id > 0) {
                 <div class="col-md-6 col-xl-4 reveal">
                     <article class="news-card glass-panel h-100">
                         <a href="post.php?slug=<?php echo urlencode($art['slug']); ?>" class="news-card-media news-card-media-sm">
-                            <?php if (!empty($art['image_url']) && file_exists(PUBLIC_PATH . '/uploads/' . $art['image_url'])): ?>
-                                <img src="<?php echo media_url($art['image_url'], ''); ?>" alt="" loading="lazy">
+                            <?php $art_media = post_card_media($art); ?>
+                            <?php if ($art_media['url'] != ''): ?>
+                                <img src="<?php echo htmlspecialchars($art_media['url']); ?>" alt="<?php echo htmlspecialchars($art_media['alt']); ?>" loading="lazy">
                             <?php else: ?>
                                 <div class="news-card-placeholder"><?php
                                     $art_icon = 'fa-image';

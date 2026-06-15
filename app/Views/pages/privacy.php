@@ -25,7 +25,7 @@
                 <p>You can delete your account from Edit Profile. Your posts may remain on the site without an author name, but your personal account data will be removed.</p>
 
                 <h5 class="text-white mt-4">7. Contact</h5>
-                <p>For privacy questions, contact us through the <a href="contact.php" class="footer-link">Contact page</a> or email <a href="mailto:<?php echo htmlspecialchars(SITE_CONTACT_EMAIL); ?>" class="footer-link"><?php echo htmlspecialchars(SITE_CONTACT_EMAIL); ?></a>.</p>
+                <p>For privacy questions, contact us through the <a href="contact.php" class="footer-link">Contact page</a> or email <a href="mailto:<?php echo htmlspecialchars(site_contact_email()); ?>" class="footer-link"><?php echo htmlspecialchars(site_contact_email()); ?></a>.</p>
             </div>
 
             <div class="mt-4 pt-3 border-top border-secondary">

@@ -81,7 +81,7 @@
         </div>
 
         <div class="glass-panel p-4 mt-4 reveal text-center">
-            <p class="text-secondary mb-3">Still need help? Contact us directly or report content that breaks community rules.</p>
+            <p class="text-secondary mb-3">Still need help? Email <a href="mailto:<?php echo htmlspecialchars(site_contact_email()); ?>" class="footer-link"><?php echo htmlspecialchars(site_contact_email()); ?></a>, use the contact form, or report content that breaks community rules.</p>
             <a href="contact.php" class="btn btn-gradient btn-sm me-2"><i class="fa-solid fa-envelope"></i> Contact Us</a>
             <a href="help-us.php" class="btn btn-outline-custom btn-sm me-2"><i class="fa-solid fa-hand-holding-heart"></i> Help Us</a>
             <a href="report.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-flag"></i> Report Content</a>

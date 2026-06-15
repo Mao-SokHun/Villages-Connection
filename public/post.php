@@ -10,11 +10,11 @@ if ($slug == '') {
 }
 
 $stmt = $pdo->prepare("SELECT p.*, c.name as category_name, c.slug as category_slug, c.icon as category_icon,
-    u.id as author_id, u.name as author_name, u.avatar as author_avatar, u.bio as author_bio, u.location as author_location, u.role as author_role
+    u.id as author_id, u.name as author_name, u.email as author_email, u.avatar as author_avatar, u.bio as author_bio, u.location as author_location, u.role as author_role
     FROM posts p
     LEFT JOIN categories c ON p.category_id = c.id
     LEFT JOIN users u ON p.user_id = u.id
-    WHERE p.slug = :slug AND p.status = 'Published'");
+    WHERE p.slug = :slug AND p.status = 'Published'" . sql_hide_inactive_authors('u'));
 $stmt->execute(array('slug' => $slug));
 $post = $stmt->fetch();
 
@@ -31,42 +31,75 @@ if (record_post_view($pdo, (int) $post['id'])) {
 }
 
 $liked = false;
-$lk = $pdo->prepare('SELECT id FROM post_likes WHERE post_id = :pid AND visitor_key = :vk');
-$lk->execute(array('pid' => $post['id'], 'vk' => visitor_key()));
-if ($lk->fetch()) {
-    $liked = true;
+if (isLoggedIn()) {
+    $liked = user_liked_post($pdo, (int) $post['id'], (int) $_SESSION['user_id']);
 }
 
+$is_post_owner = isLoggedIn() && (int) $_SESSION['user_id'] == (int) $post['user_id'];
+
 $comment_errors = array();
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['moderate_comment']) && comments_are_enabled()) {
+    require_valid_csrf();
+    if (!$is_post_owner && !isAdmin()) {
+        setFlashMessage('danger', 'You cannot moderate comments on this post.');
+    } else {
+        $moderate_id = 0;
+        if (isset($_POST['comment_id'])) {
+            $moderate_id = (int) $_POST['comment_id'];
+        }
+        $moderate_action = trim($_POST['moderate_comment']);
+        if ($moderate_id > 0 && ($moderate_action == 'approve' || $moderate_action == 'reject')) {
+            $result = moderate_post_owner_comment($pdo, $moderate_id, $moderate_action == 'approve' ? 'approved' : 'rejected');
+            if ($result['ok']) {
+                setFlashMessage('success', $moderate_action == 'approve' ? 'Comment approved.' : 'Comment rejected.');
+            } else {
+                setFlashMessage('danger', $result['error']);
+            }
+        }
+    }
+    header('Location: ' . post_url($slug, '/') . '#comments');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['comment_content']) && comments_are_enabled()) {
     require_valid_csrf();
     if (!isLoggedIn()) {
         $comment_errors[] = 'Please sign in to comment.';
     } else {
-        $comment_content = trim($_POST['comment_content']);
-        if (strlen($comment_content) < 2) {
-            $comment_errors[] = 'Comment must be at least 2 characters.';
-        } elseif (strlen($comment_content) > 1000) {
-            $comment_errors[] = 'Comment is too long (max 1000 characters).';
+        $comment_user_id = (int) $_SESSION['user_id'];
+        if (!rate_limit_hit('post_comment', 'user:' . $comment_user_id, 15, 300)) {
+            $comment_errors[] = rate_limit_blocked_response('post_comment', 'user:' . $comment_user_id, 300, false);
         } else {
-            $comment_status = comments_require_approval() ? 'pending' : 'approved';
-            $sql = 'INSERT INTO post_comments (post_id, user_id, author_name, content, status) VALUES (:pid, :uid, :name, :content, :status)';
-            $pdo->prepare($sql)->execute(array(
-                'pid' => $post['id'],
-                'uid' => (int) $_SESSION['user_id'],
-                'name' => $_SESSION['user_name'],
-                'content' => $comment_content,
-                'status' => $comment_status
-            ));
+        $parent_id = 0;
+        if (isset($_POST['parent_id'])) {
+            $parent_id = (int) $_POST['parent_id'];
+        }
+        $comment_content = '';
+        if (isset($_POST['comment_content'])) {
+            $comment_content = trim($_POST['comment_content']);
+        }
+        $result = create_post_comment($pdo, (int) $post['id'], $comment_user_id, $_SESSION['user_name'], $comment_content, $parent_id);
+        if ($result['ok'] == false) {
+            $comment_errors[] = $result['error'];
+        } else {
             log_activity($pdo, 'comment.created', 'Post #' . $post['id']);
-            notify_post_author_on_comment($pdo, $post['id'], $_SESSION['user_name'], $slug);
-            if ($comment_status == 'pending') {
-                setFlashMessage('info', 'Your comment was submitted and is awaiting approval.');
-            } else {
-                setFlashMessage('success', 'Comment posted.');
+            $comment_status = $result['status'];
+            notify_post_author_on_comment($pdo, $post['id'], $_SESSION['user_name'], $slug, $comment_status == 'pending');
+            if ($parent_id > 0 && $comment_status == 'approved') {
+                notify_comment_reply($pdo, $parent_id, $_SESSION['user_name'], $slug);
             }
-            header('Location: post.php?slug=' . urlencode($slug) . '#comments');
+            if ($comment_status == 'pending') {
+                notify_admins_pending_comment($pdo, $post['id'], $_SESSION['user_name']);
+            }
+            if ($comment_status == 'pending') {
+                setFlashMessage('info', __('comments.pending_notice'));
+            } else {
+                setFlashMessage('success', $parent_id > 0 ? __('comments.reply_posted') : __('comments.posted'));
+            }
+            $anchor = $parent_id > 0 ? '#comment-' . $parent_id : '#comments';
+            header('Location: ' . post_url($slug, '/') . $anchor);
             exit;
+        }
         }
     }
 }
@@ -75,7 +108,10 @@ $post_comments = array();
 if (comments_are_enabled()) {
     try {
         if (isAdmin()) {
-            $cstmt = $pdo->prepare("SELECT * FROM post_comments WHERE post_id = :pid AND status != 'rejected' ORDER BY created_at ASC");
+            $cstmt = $pdo->prepare("SELECT * FROM post_comments WHERE post_id = :pid AND status NOT IN ('rejected', 'deleted') ORDER BY created_at ASC");
+            $cstmt->execute(array('pid' => $post['id']));
+        } elseif (isLoggedIn() && $is_post_owner) {
+            $cstmt = $pdo->prepare("SELECT * FROM post_comments WHERE post_id = :pid AND status NOT IN ('rejected', 'deleted') ORDER BY created_at ASC");
             $cstmt->execute(array('pid' => $post['id']));
         } elseif (isLoggedIn()) {
             $cstmt = $pdo->prepare("SELECT * FROM post_comments WHERE post_id = :pid AND (status = 'approved' OR (user_id = :uid AND status = 'pending')) ORDER BY created_at ASC");
@@ -88,6 +124,14 @@ if (comments_are_enabled()) {
     } catch (PDOException $e) {
         $post_comments = array();
     }
+}
+
+$comment_tree = build_comment_tree($post_comments);
+$comment_total = count_visible_comments($post_comments);
+
+$bookmarked = false;
+if (isLoggedIn()) {
+    $bookmarked = user_bookmarked_post($pdo, (int) $_SESSION['user_id'], (int) $post['id']);
 }
 
 $prev_post = null;
@@ -109,8 +153,11 @@ if (isset($post['author_name']) && $post['author_name'] != '') {
 }
 $page_description = excerpt($post['summary'], 160);
 $page_og_image = '';
-if (!empty($post['image_url']) && file_exists(PUBLIC_PATH . '/uploads/' . $post['image_url'])) {
-    $page_og_image = site_base_url() . '/' . media_url($post['image_url'], '');
+if (!empty($post['image_url']) && post_media_available($post['image_url'], '')) {
+    $page_og_image = resolve_media_src($post['image_url'], '');
+    if (!is_remote_media_url($page_og_image)) {
+        $page_og_image = site_base_url() . $page_og_image;
+    }
 }
 $canonical_url = site_base_url() . '/post/' . rawurlencode($post['slug']);
 $share_url = $canonical_url;
@@ -122,6 +169,11 @@ $read_time = max(1, (int) ceil(str_word_count(strip_tags($post['content'])) / 18
 $author_avatar = '';
 if (isset($post['author_avatar'])) {
     $author_avatar = $post['author_avatar'];
+}
+
+$author_email = '';
+if (isset($post['author_email'])) {
+    $author_email = trim($post['author_email']);
 }
 
 $author_bio = '';
@@ -159,7 +211,7 @@ if ($author_bio != '') {
 
 <div class="row g-4 mb-5">
     <div class="col-lg-8">
-        <article class="glass-panel p-4 p-md-5 reveal" id="post-article" data-post-id="<?php echo (int)$post['id']; ?>">
+        <article class="glass-panel p-4 p-md-5 reveal" id="post-article" data-post-id="<?php echo (int)$post['id']; ?>" data-require-login="<?php echo isLoggedIn() ? '0' : '1'; ?>">
             <div class="mb-4">
                 <span class="cat-chip mb-2"><?php
                     $post_cat_icon = 'fa-tag';
@@ -182,9 +234,9 @@ if ($author_bio != '') {
                 </div>
             </div>
 
-            <?php if (!empty($post['image_url']) && file_exists(PUBLIC_PATH . '/uploads/' . $post['image_url'])): ?>
+            <?php if (!empty($post['image_url']) && post_media_available($post['image_url'], '')): ?>
             <figure class="post-hero-image mb-4 rounded overflow-hidden">
-                <img src="<?php echo media_url($post['image_url'], ''); ?>" alt="<?php echo htmlspecialchars(post_image_alt($post, $post['title'])); ?>" class="w-100">
+                <img src="<?php echo htmlspecialchars(resolve_media_src($post['image_url'], '')); ?>" alt="<?php echo htmlspecialchars(post_image_alt($post, $post['title'])); ?>" class="w-100">
             </figure>
             <?php endif; ?>
 
@@ -197,11 +249,13 @@ if ($author_bio != '') {
                         <iframe src="<?php echo htmlspecialchars($embed); ?>?rel=0" title="Video" allowfullscreen loading="lazy"></iframe>
                     </div>
                     <?php endif; ?>
-                <?php elseif ($post['video_type'] == 'upload' && file_exists(PUBLIC_PATH . '/uploads/videos/' . $post['video_url'])): ?>
+                <?php elseif ($post['video_type'] == 'upload' && post_media_available($post['video_url'], 'videos')): ?>
                     <video class="w-100" controls playsinline poster="<?php
-                        if (!empty($post['image_url'])) echo media_url($post['image_url'], '');
+                        if (!empty($post['image_url']) && post_media_available($post['image_url'], '')) {
+                            echo htmlspecialchars(resolve_media_src($post['image_url'], ''));
+                        }
                     ?>">
-                        <source src="<?php echo media_url($post['video_url'], 'videos'); ?>" type="video/mp4">
+                        <source src="<?php echo htmlspecialchars(resolve_media_src($post['video_url'], 'videos')); ?>" type="video/mp4">
                     </video>
                 <?php endif; ?>
             </div>
@@ -212,7 +266,7 @@ if ($author_bio != '') {
             <div class="article-body text-secondary post-content-markdown"><?php echo render_post_content($post['content']); ?></div>
 
             <div class="author-card mt-5">
-                <?php echo render_user_avatar($author_name, $author_avatar, 'user-avatar-lg'); ?>
+                <?php echo render_user_avatar($author_name, $author_avatar, 'user-avatar-lg', $author_email); ?>
                 <div class="author-card-info">
                     <div class="text-white fw-semibold"><?php echo htmlspecialchars($author_name); ?></div>
                     <div class="text-secondary small author-card-bio"><?php echo htmlspecialchars(excerpt($author_subtitle, 120)); ?></div>
@@ -225,9 +279,12 @@ if ($author_bio != '') {
             </div>
 
             <div class="post-actions-bar mt-4 pt-4 border-top border-secondary">
-                <button type="button" class="btn btn-like <?php if ($liked) echo 'liked'; ?>" id="btn-like" data-liked="<?php if ($liked) echo '1'; else echo '0'; ?>">
+                <button type="button" class="btn btn-outline-custom btn-bookmark <?php if ($bookmarked) echo 'is-bookmarked'; ?>" id="btn-bookmark" data-post-id="<?php echo (int) $post['id']; ?>" data-bookmarked="<?php echo $bookmarked ? '1' : '0'; ?>" data-require-login="<?php echo isLoggedIn() ? '0' : '1'; ?>">
+                    <i class="fa-<?php echo $bookmarked ? 'solid' : 'regular'; ?> fa-bookmark"></i> <?php echo __('bookmarks.save'); ?>
+                </button>
+                <button type="button" class="btn btn-like <?php if ($liked) echo 'liked'; ?>" id="btn-like" data-liked="<?php if ($liked) echo '1'; else echo '0'; ?>" title="<?php echo htmlspecialchars(__('post.like_login')); ?>">
                     <i class="fa-<?php if ($liked) echo 'solid'; else echo 'regular'; ?> fa-heart"></i>
-                    <span id="like-count"><?php echo (int)$post['likes']; ?></span> Likes
+                    <span id="like-count"><?php echo (int)$post['likes']; ?></span> <?php echo __('post.likes'); ?>
                 </button>
                 <button type="button" class="btn btn-outline-custom btn-share" data-share="copy" data-url="<?php echo htmlspecialchars($share_url); ?>">
                     <i class="fa-solid fa-link"></i> Copy Link
@@ -241,51 +298,51 @@ if ($author_bio != '') {
                 <a href="report.php?url=<?php echo urlencode($share_url); ?>" class="btn btn-outline-custom">
                     <i class="fa-solid fa-flag"></i> Report
                 </a>
+                <?php if (comments_are_enabled()): ?>
+                <a href="#comments" class="btn btn-outline-custom">
+                    <i class="fa-solid fa-comments"></i> <?php echo __('comments.title'); ?> (<?php echo (int) $comment_total; ?>)
+                </a>
+                <?php endif; ?>
             </div>
         </article>
 
         <?php if (comments_are_enabled()): ?>
-        <section id="comments" class="glass-panel p-4 mt-4 reveal">
-            <h4 class="text-white mb-3"><i class="fa-solid fa-comments text-info me-2"></i>Comments (<?php echo count($post_comments); ?>)</h4>
+        <section id="comments" class="glass-panel p-4 mt-4 reveal comments-section">
+            <h4 class="text-white mb-3"><i class="fa-solid fa-comments text-info me-2"></i><?php echo __('comments.title'); ?> (<?php echo (int) $comment_total; ?>)</h4>
 
             <?php if (count($comment_errors) > 0): ?>
             <div class="alert alert-danger"><ul class="mb-0 small"><?php foreach ($comment_errors as $ce): ?><li><?php echo htmlspecialchars($ce); ?></li><?php endforeach; ?></ul></div>
             <?php endif; ?>
 
             <?php if (isLoggedIn()): ?>
-            <form method="POST" action="post.php?slug=<?php echo urlencode($slug); ?>#comments" class="mb-4">
+            <form method="POST" action="<?php echo htmlspecialchars(post_url($slug, '/') . '#comments'); ?>" class="mb-4" id="comment-form">
                 <?php echo csrf_field(); ?>
-                <label class="form-label form-label-custom">Add a comment</label>
-                <textarea name="comment_content" class="form-control form-control-custom mb-2" rows="3" placeholder="Share your thoughts..." required></textarea>
-                <button type="submit" class="btn btn-gradient btn-sm"><i class="fa-solid fa-paper-plane"></i> Post Comment</button>
+                <input type="hidden" name="parent_id" id="comment-parent-id" value="0">
+                <div id="comment-reply-banner" class="comment-reply-banner" hidden>
+                    <span><?php echo __('comments.replying_to'); ?> <strong id="comment-reply-author"></strong></span>
+                    <button type="button" class="btn btn-link btn-sm p-0" id="comment-reply-cancel"><?php echo __('comments.cancel_reply'); ?></button>
+                </div>
+                <label class="form-label form-label-custom" for="comment-content"><?php echo __('comments.add'); ?></label>
+                <textarea name="comment_content" id="comment-content" class="form-control form-control-custom mb-2" rows="3" placeholder="<?php echo htmlspecialchars(__('comments.placeholder')); ?>" required></textarea>
+                <button type="submit" class="btn btn-gradient btn-sm"><i class="fa-solid fa-paper-plane"></i> <?php echo __('comments.submit'); ?></button>
+                <?php if (!$is_post_owner && comments_require_approval()): ?>
+                <p class="text-secondary small mt-2 mb-0"><i class="fa-solid fa-hourglass-half me-1"></i><?php echo __('comments.approval_note'); ?></p>
+                <?php endif; ?>
             </form>
             <?php else: ?>
-            <p class="text-secondary small mb-4"><a href="login.php" class="footer-link">Sign in</a> to join the conversation.</p>
+            <p class="text-secondary small mb-4"><a href="login.php" class="footer-link"><?php echo __('nav.sign_in'); ?></a> <?php echo __('comments.sign_in'); ?></p>
             <?php endif; ?>
 
-            <?php if (count($post_comments) == 0): ?>
-            <p class="text-secondary small mb-0">No comments yet. Be the first to comment.</p>
+            <?php if ($comment_total == 0): ?>
+            <p class="text-secondary small mb-0"><?php echo __('comments.empty'); ?></p>
             <?php else: ?>
             <div class="comment-list">
-                <?php foreach ($post_comments as $comment): ?>
-                <?php $can_manage_comment = can_manage_comment($comment); ?>
-                <div class="comment-item" id="comment-<?php echo (int) $comment['id']; ?>" data-comment-id="<?php echo (int) $comment['id']; ?>">
-                    <div class="comment-meta">
-                        <strong class="text-white"><?php echo htmlspecialchars($comment['author_name']); ?></strong>
-                        <span class="text-secondary small"><?php echo date('M j, Y H:i', strtotime($comment['created_at'])); ?></span>
-                        <?php if ($comment['status'] == 'pending'): ?>
-                        <span class="badge bg-warning text-dark">Pending</span>
-                        <?php endif; ?>
-                        <?php if ($can_manage_comment): ?>
-                        <span class="comment-actions ms-auto">
-                            <button type="button" class="btn btn-sm btn-outline-custom py-0 px-2 comment-edit-btn" data-id="<?php echo (int) $comment['id']; ?>" data-content="<?php echo htmlspecialchars($comment['content']); ?>"><i class="fa-solid fa-pen"></i></button>
-                            <button type="button" class="btn btn-sm btn-outline-custom text-danger py-0 px-2 comment-delete-btn" data-id="<?php echo (int) $comment['id']; ?>"><i class="fa-solid fa-trash"></i></button>
-                        </span>
-                        <?php endif; ?>
-                    </div>
-                    <p class="text-secondary mb-0 comment-content"><?php echo nl2br(htmlspecialchars($comment['content'])); ?></p>
-                </div>
-                <?php endforeach; ?>
+                <?php foreach ($comment_tree as $comment):
+                    $comment_depth = 0;
+                    $comment_post_slug = $slug;
+                    $comment_is_post_owner = $is_post_owner;
+                    include ROOT_PATH . '/app/Views/partials/comment-item.php';
+                endforeach; ?>
             </div>
             <?php endif; ?>
         </section>
@@ -316,7 +373,11 @@ if ($author_bio != '') {
         <div class="glass-panel p-4 mb-4 reveal sticky-sidebar">
             <h5 class="text-white mb-3"><i class="fa-solid fa-fire text-warning me-2"></i>Popular Posts</h5>
             <?php
-            $pop = $pdo->prepare('SELECT title, slug, views, likes, image_url FROM posts WHERE id != :id AND status = \'Published\' ORDER BY views DESC LIMIT 4');
+            $pop = $pdo->prepare("SELECT p.title, p.slug, p.views, p.likes, p.image_url, p.video_type, p.video_url, c.icon AS category_icon
+                FROM posts p
+                LEFT JOIN categories c ON c.id = p.category_id
+                WHERE p.id != :id AND p.status = 'Published'
+                ORDER BY p.views DESC LIMIT 4");
             $pop->execute(array('id' => $post['id']));
             $popular_list = $pop->fetchAll();
             if (count($popular_list) == 0):
@@ -324,11 +385,7 @@ if ($author_bio != '') {
             <p class="text-secondary small mb-0">No other posts yet.</p>
             <?php else: foreach ($popular_list as $p): ?>
             <a href="post.php?slug=<?php echo urlencode($p['slug']); ?>" class="sidebar-post-item">
-                <?php if ($p['image_url'] != '' && file_exists(PUBLIC_PATH . '/uploads/' . $p['image_url'])): ?>
-                <img src="<?php echo media_url($p['image_url'], ''); ?>" alt="" class="sidebar-post-thumb">
-                <?php else: ?>
-                <div class="sidebar-post-thumb sidebar-post-thumb-placeholder"><i class="fa-solid fa-image"></i></div>
-                <?php endif; ?>
+                <?php echo render_sidebar_post_thumb($p); ?>
                 <div>
                     <div class="sidebar-post-title"><?php echo htmlspecialchars(excerpt($p['title'], 45)); ?></div>
                     <div class="text-secondary small"><i class="fa-solid fa-eye"></i> <?php echo (int)$p['views']; ?> · <i class="fa-solid fa-heart"></i> <?php echo (int)$p['likes']; ?></div>
@@ -340,7 +397,11 @@ if ($author_bio != '') {
         <div class="glass-panel p-4 reveal">
             <h5 class="text-white mb-3"><i class="fa-solid fa-tags text-warning me-2"></i>Related Posts</h5>
             <?php
-            $rel = $pdo->prepare('SELECT title, slug, image_url FROM posts WHERE category_id = :cid AND id != :id AND status = \'Published\' ORDER BY created_at DESC LIMIT 5');
+            $rel = $pdo->prepare("SELECT p.title, p.slug, p.image_url, p.video_type, p.video_url, c.icon AS category_icon
+                FROM posts p
+                LEFT JOIN categories c ON c.id = p.category_id
+                WHERE p.category_id = :cid AND p.id != :id AND p.status = 'Published'
+                ORDER BY p.id DESC LIMIT 5");
             $rel->execute(array('cid' => $post['category_id'], 'id' => $post['id']));
             $related_list = $rel->fetchAll();
             if (count($related_list) == 0):
@@ -348,11 +409,7 @@ if ($author_bio != '') {
             <p class="text-secondary small mb-0">No related posts in this category.</p>
             <?php else: foreach ($related_list as $r): ?>
             <a href="post.php?slug=<?php echo urlencode($r['slug']); ?>" class="sidebar-post-item">
-                <?php if ($r['image_url'] != '' && file_exists(PUBLIC_PATH . '/uploads/' . $r['image_url'])): ?>
-                <img src="<?php echo media_url($r['image_url'], ''); ?>" alt="" class="sidebar-post-thumb">
-                <?php else: ?>
-                <div class="sidebar-post-thumb sidebar-post-thumb-placeholder"><i class="fa-solid fa-image"></i></div>
-                <?php endif; ?>
+                <?php echo render_sidebar_post_thumb($r); ?>
                 <div class="sidebar-post-title"><?php echo htmlspecialchars(excerpt($r['title'], 50)); ?></div>
             </a>
             <?php endforeach; endif; ?>

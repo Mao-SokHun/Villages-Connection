@@ -61,6 +61,29 @@ function setting_is_enabled($key, $default = false)
     return ($val == '1' || $val == 'true' || $val === true);
 }
 
+function media_file_in_use($pdo, $filename, $subdir)
+{
+    if ($filename == '') {
+        return false;
+    }
+
+    if ($subdir == 'avatars') {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE avatar = :file');
+        $stmt->execute(array('file' => $filename));
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    if ($subdir == 'videos') {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM posts WHERE video_url = :file AND video_type = 'upload'");
+        $stmt->execute(array('file' => $filename));
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM posts WHERE image_url = :file');
+    $stmt->execute(array('file' => $filename));
+    return (int) $stmt->fetchColumn() > 0;
+}
+
 function admin_request_ip()
 {
     if (isset($_SERVER['REMOTE_ADDR'])) {
@@ -101,6 +124,42 @@ function user_is_banned($user)
     return ($user['is_banned'] === true || $user['is_banned'] == 1 || $user['is_banned'] === 't');
 }
 
+function user_is_publicly_visible($user)
+{
+    if (!is_array($user)) {
+        return false;
+    }
+    if (user_is_deleted($user) || user_is_banned($user)) {
+        return false;
+    }
+    return true;
+}
+
+function sql_hide_inactive_authors($user_alias = 'u')
+{
+    return " AND ($user_alias.id IS NULL OR (COALESCE($user_alias.account_status, 'active') != 'deleted' AND COALESCE($user_alias.is_banned, FALSE) = FALSE))";
+}
+
+function user_account_status($user)
+{
+    if (!is_array($user) || !isset($user['account_status']) || $user['account_status'] === '') {
+        return 'active';
+    }
+    return $user['account_status'];
+}
+
+function user_is_deleted($user)
+{
+    return user_account_status($user) === 'deleted';
+}
+
+function soft_delete_post($pdo, $post_id)
+{
+    $stmt = $pdo->prepare("UPDATE posts SET status = 'Deleted', is_featured = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+    $stmt->execute(array('id' => (int) $post_id));
+    return $stmt->rowCount() > 0;
+}
+
 function ban_user($pdo, $user_id, $reason = '')
 {
     $sql = 'UPDATE users SET is_banned = TRUE, banned_reason = :reason, banned_at = CURRENT_TIMESTAMP WHERE id = :id';
@@ -139,7 +198,12 @@ function comments_are_enabled()
 
 function comments_require_approval()
 {
-    return setting_is_enabled('comments_require_approval', true);
+    return setting_is_enabled('comments_require_approval', false);
+}
+
+function email_verification_required()
+{
+    return setting_is_enabled('require_email_verification', false);
 }
 
 function resolve_post_status_for_author($requested_status)
@@ -187,34 +251,38 @@ function post_status_badge_class($status)
     return 'bg-secondary';
 }
 
-function save_contact_message($pdo, $name, $email, $subject, $message)
+function save_contact_message($pdo, $name, $email, $subject, $message, $user_id = 0)
 {
-    $sql = 'INSERT INTO contact_messages (name, email, subject, message) VALUES (:name, :email, :subject, :message) RETURNING id';
+    $sql = 'INSERT INTO contact_messages (name, email, subject, message, user_id) VALUES (:name, :email, :subject, :message, :user_id) RETURNING id';
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array(
         'name' => $name,
         'email' => $email,
         'subject' => $subject,
-        'message' => $message
+        'message' => $message,
+        'user_id' => $user_id > 0 ? (int) $user_id : null
     ));
     $id = (int) $stmt->fetchColumn();
     log_activity($pdo, 'contact.received', 'Message #' . $id . ' from ' . $email);
+    notify_admins_contact_message($pdo, $id, $name, $email, $subject);
     return $id;
 }
 
-function save_content_report($pdo, $name, $email, $reason, $post_url, $details)
+function save_content_report($pdo, $name, $email, $reason, $post_url, $details, $user_id = 0)
 {
-    $sql = 'INSERT INTO content_reports (reporter_name, reporter_email, reason, post_url, details) VALUES (:name, :email, :reason, :post_url, :details) RETURNING id';
+    $sql = 'INSERT INTO content_reports (reporter_name, reporter_email, reason, post_url, details, user_id) VALUES (:name, :email, :reason, :post_url, :details, :user_id) RETURNING id';
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array(
         'name' => $name,
         'email' => $email,
         'reason' => $reason,
         'post_url' => $post_url,
-        'details' => $details
+        'details' => $details,
+        'user_id' => $user_id > 0 ? (int) $user_id : null
     ));
     $id = (int) $stmt->fetchColumn();
     log_activity($pdo, 'report.received', 'Report #' . $id . ' — ' . $reason);
+    notify_admins_content_report($pdo, $id, $reason);
     return $id;
 }
 
@@ -222,13 +290,28 @@ function admin_unread_counts($pdo)
 {
     $counts = array('messages' => 0, 'reports' => 0, 'pending_posts' => 0, 'pending_comments' => 0, 'notifications' => 0);
 
+    if (!isLoggedIn()) {
+        return $counts;
+    }
+
+    $user_id = (int) $_SESSION['user_id'];
+
     try {
-        $counts['messages'] = (int) $pdo->query("SELECT COUNT(*) FROM contact_messages WHERE status = 'new'")->fetchColumn();
-        $counts['reports'] = (int) $pdo->query("SELECT COUNT(*) FROM content_reports WHERE status = 'open'")->fetchColumn();
-        $counts['pending_posts'] = (int) $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'Pending'")->fetchColumn();
-        $counts['pending_comments'] = (int) $pdo->query("SELECT COUNT(*) FROM post_comments WHERE status = 'pending'")->fetchColumn();
-        if (isLoggedIn()) {
-            $counts['notifications'] = unread_notification_count($pdo, (int) $_SESSION['user_id']);
+        $sql = "SELECT
+            (SELECT COUNT(*) FROM contact_messages WHERE status = 'new') AS messages,
+            (SELECT COUNT(*) FROM content_reports WHERE status = 'open') AS reports,
+            (SELECT COUNT(*) FROM posts WHERE status = 'Pending') AS pending_posts,
+            (SELECT COUNT(*) FROM post_comments WHERE status = 'pending') AS pending_comments,
+            (SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = FALSE) AS notifications";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array('uid' => $user_id));
+        $row = $stmt->fetch();
+        if ($row) {
+            $counts['messages'] = (int) $row['messages'];
+            $counts['reports'] = (int) $row['reports'];
+            $counts['pending_posts'] = (int) $row['pending_posts'];
+            $counts['pending_comments'] = (int) $row['pending_comments'];
+            $counts['notifications'] = (int) $row['notifications'];
         }
     } catch (PDOException $e) {
         // Tables may not exist yet.
@@ -409,19 +492,30 @@ function render_admin_action_button($page, $action, $id, $options = array())
         $value = $options['value'];
     }
 
-    $onclick = '';
-    if ($confirm != '') {
-        $onclick = ' onclick="return confirm(' . json_encode($confirm) . ')"';
+    $confirm_title = 'Confirm';
+    if (isset($options['confirm_title'])) {
+        $confirm_title = $options['confirm_title'];
+    } elseif ($action == 'delete') {
+        $confirm_title = 'Delete?';
     }
 
-    echo '<form method="POST" action="' . htmlspecialchars($page) . '" class="d-inline admin-action-form">';
+    $form_attrs = 'class="d-inline admin-action-form"';
+    if ($confirm != '') {
+        $form_attrs = $form_attrs . ' data-confirm="' . htmlspecialchars($confirm, ENT_QUOTES) . '"';
+        $form_attrs = $form_attrs . ' data-confirm-title="' . htmlspecialchars($confirm_title, ENT_QUOTES) . '"';
+        if ($action == 'delete') {
+            $form_attrs = $form_attrs . ' data-confirm-danger="1"';
+        }
+    }
+
+    echo '<form method="POST" action="' . htmlspecialchars($page) . '" ' . $form_attrs . '>';
     echo csrf_field();
     echo '<input type="hidden" name="admin_action" value="' . htmlspecialchars($action) . '">';
     echo '<input type="hidden" name="admin_id" value="' . (int) $id . '">';
     if ($value != '') {
         echo '<input type="hidden" name="admin_value" value="' . htmlspecialchars($value) . '">';
     }
-    echo '<button type="submit" class="' . htmlspecialchars($class) . '" title="' . htmlspecialchars($title) . '"' . $onclick . '>';
+    echo '<button type="submit" class="' . htmlspecialchars($class) . '" title="' . htmlspecialchars($title) . '">';
     if ($icon != '') {
         echo '<i class="' . htmlspecialchars($icon) . '"></i>';
     }

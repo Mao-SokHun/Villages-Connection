@@ -9,11 +9,9 @@ if ($p == null) {
     return;
 }
 
-$img = media_url($p['image_url'], '');
-$has_img = false;
-if ($img != '' && isset($p['image_url']) && file_exists(PUBLIC_PATH . '/uploads/' . $p['image_url'])) {
-    $has_img = true;
-}
+$media = post_card_media($p);
+$has_img = ($media['url'] != '');
+$img = $media['url'];
 $has_video = post_has_video($p);
 $slug = $p['slug'];
 

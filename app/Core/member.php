@@ -1,6 +1,6 @@
 <?php
 
-function create_notification($pdo, $user_id, $type, $title, $message, $link_url = '')
+function create_notification($pdo, $user_id, $type, $title, $message, $link_url = '', $send_email = true)
 {
     if ($user_id <= 0) {
         return false;
@@ -16,7 +16,12 @@ function create_notification($pdo, $user_id, $type, $title, $message, $link_url 
             'message' => $message,
             'link' => $link_url
         ));
-        notify_user_by_email($pdo, (int) $user_id, $title, $message, $link_url);
+        if ($send_email) {
+            notify_user_by_email($pdo, (int) $user_id, $title, $message, $link_url);
+        }
+        if (function_exists('push_send_to_user')) {
+            push_send_to_user($pdo, (int) $user_id, $title, $message, $link_url);
+        }
         return true;
     } catch (PDOException $e) {
         return false;
@@ -76,6 +81,82 @@ function mark_all_notifications_read($pdo, $user_id)
     $sql = 'UPDATE notifications SET is_read = TRUE WHERE user_id = :uid AND is_read = FALSE';
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array('uid' => (int) $user_id));
+}
+
+function mark_support_notifications_read($pdo, $user_id, $message_id)
+{
+    if ($user_id <= 0 || $message_id <= 0) {
+        return;
+    }
+
+    try {
+        $sql = "UPDATE notifications SET is_read = TRUE
+                WHERE user_id = :uid AND is_read = FALSE
+                AND type IN ('contact_reply', 'contact_sent')
+                AND link_url LIKE :pat";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array(
+            'uid' => (int) $user_id,
+            'pat' => '%message=' . (int) $message_id . '%',
+        ));
+    } catch (PDOException $e) {
+        // Ignore if table missing.
+    }
+}
+
+function mark_admin_contact_notifications_read($pdo, $admin_id, $message_id)
+{
+    if ($admin_id <= 0 || $message_id <= 0) {
+        return;
+    }
+
+    try {
+        $sql = "UPDATE notifications SET is_read = TRUE
+                WHERE user_id = :uid AND is_read = FALSE
+                AND type = 'contact_message'
+                AND link_url LIKE :pat";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array(
+            'uid' => (int) $admin_id,
+            'pat' => '%id=' . (int) $message_id . '%',
+        ));
+    } catch (PDOException $e) {
+        // Ignore if table missing.
+    }
+}
+
+function notification_type_label($type)
+{
+    if ($type == 'contact_reply' || $type == 'contact_sent') {
+        return 'Support';
+    }
+    if ($type == 'contact_message') {
+        return 'Inbox';
+    }
+    if ($type == 'pending_post' || $type == 'pending_comment') {
+        return 'Review';
+    }
+    if ($type == 'content_report') {
+        return 'Report';
+    }
+    if ($type == 'post_approved' || $type == 'post_rejected') {
+        return 'Post';
+    }
+    if ($type == 'comment_approved' || $type == 'new_comment') {
+        return 'Comment';
+    }
+    if ($type == 'new_follower') {
+        return 'Follow';
+    }
+    if ($type == 'new_post') {
+        return 'Update';
+    }
+    return 'Alert';
+}
+
+function notification_is_support_type($type)
+{
+    return ($type == 'contact_reply' || $type == 'contact_sent');
 }
 
 function is_following_user($pdo, $follower_id, $following_id)
@@ -204,6 +285,13 @@ function update_own_comment($pdo, $comment_id, $content)
     return array('ok' => true, 'status' => $status);
 }
 
+function soft_delete_comment($pdo, $comment_id)
+{
+    $stmt = $pdo->prepare("UPDATE post_comments SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+    $stmt->execute(array('id' => (int) $comment_id));
+    return $stmt->rowCount() > 0;
+}
+
 function delete_own_comment($pdo, $comment_id)
 {
     $comment = get_comment_by_id($pdo, $comment_id);
@@ -211,12 +299,12 @@ function delete_own_comment($pdo, $comment_id)
         return array('ok' => false, 'error' => 'You cannot delete this comment.');
     }
 
-    $pdo->prepare('DELETE FROM post_comments WHERE id = :id')->execute(array('id' => (int) $comment_id));
+    soft_delete_comment($pdo, (int) $comment_id);
     log_activity($pdo, 'comment.deleted', 'Comment #' . $comment_id);
     return array('ok' => true);
 }
 
-function notify_post_author_on_comment($pdo, $post_id, $commenter_name, $post_slug)
+function notify_post_author_on_comment($pdo, $post_id, $commenter_name, $post_slug, $needs_approval = false)
 {
     $stmt = $pdo->prepare('SELECT user_id, title FROM posts WHERE id = :id');
     $stmt->execute(array('id' => (int) $post_id));
@@ -225,17 +313,31 @@ function notify_post_author_on_comment($pdo, $post_id, $commenter_name, $post_sl
         return;
     }
 
-    if (isLoggedIn() && (int) $post['user_id'] == (int) $_SESSION['user_id']) {
+    $commenter_id = 0;
+    if (isLoggedIn()) {
+        $commenter_id = (int) $_SESSION['user_id'];
+    }
+    if ((int) $post['user_id'] == $commenter_id) {
         return;
+    }
+
+    if ($needs_approval) {
+        $title = 'New comment awaiting approval';
+        $message = $commenter_name . ' commented on "' . excerpt($post['title'], 40) . '". Approve it in My Comments.';
+        $link = 'admin/my-comments.php?status=pending';
+    } else {
+        $title = 'New comment on your post';
+        $message = $commenter_name . ' commented on "' . excerpt($post['title'], 40) . '".';
+        $link = 'post/' . rawurlencode($post_slug) . '#comments';
     }
 
     create_notification(
         $pdo,
         (int) $post['user_id'],
         'new_comment',
-        'New comment on your post',
-        $commenter_name . ' commented on "' . excerpt($post['title'], 40) . '".',
-        'post/' . rawurlencode($post_slug) . '#comments'
+        $title,
+        $message,
+        $link
     );
 }
 
@@ -257,6 +359,7 @@ function notify_post_status_change($pdo, $post_id, $status)
             'Your post "' . excerpt($post['title'], 40) . '" is now live.',
             'post/' . rawurlencode($post['slug'])
         );
+        notify_followers_on_new_post($pdo, (int) $post_id);
     } elseif ($status == 'Rejected') {
         create_notification(
             $pdo,
@@ -265,6 +368,209 @@ function notify_post_status_change($pdo, $post_id, $status)
             'Post needs changes',
             'Your post "' . excerpt($post['title'], 40) . '" was not approved.',
             'admin/posts.php?action=edit&id=' . (int) $post_id
+        );
+    }
+}
+
+function notify_all_admins($pdo, $type, $title, $message, $link_url = '', $send_email = false, $except_user_id = 0)
+{
+    try {
+        $stmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(account_status, 'active') != 'deleted'");
+        $admin_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        return;
+    }
+
+    foreach ($admin_ids as $admin_id) {
+        $admin_id = (int) $admin_id;
+        if ($admin_id <= 0 || $admin_id == (int) $except_user_id) {
+            continue;
+        }
+        create_notification($pdo, $admin_id, $type, $title, $message, $link_url, $send_email);
+    }
+}
+
+function notify_admins_contact_message($pdo, $message_id, $name, $email, $subject)
+{
+    $title = 'New contact message';
+    $message = excerpt($name, 24) . ': "' . excerpt($subject, 48) . '"';
+    $link = 'admin/messages.php?action=view&id=' . (int) $message_id;
+    notify_all_admins($pdo, 'contact_message', $title, $message, $link);
+}
+
+function notify_user_contact_submitted($pdo, $message_id, $user_id, $subject)
+{
+    if ($user_id <= 0 || $message_id <= 0) {
+        return;
+    }
+
+    create_notification(
+        $pdo,
+        (int) $user_id,
+        'contact_sent',
+        'Message sent to support',
+        'We received "' . excerpt($subject, 50) . '". You will get a bell notification when we reply.',
+        'support.php?message=' . (int) $message_id,
+        false
+    );
+}
+
+function notify_admins_pending_post($pdo, $post_id)
+{
+    $stmt = $pdo->prepare('SELECT p.title, u.name AS author_name FROM posts p LEFT JOIN users u ON u.id = p.user_id WHERE p.id = :id');
+    $stmt->execute(array('id' => (int) $post_id));
+    $post = $stmt->fetch();
+    if (!$post) {
+        return;
+    }
+
+    $author_name = $post['author_name'];
+    if ($author_name == '') {
+        $author_name = 'An author';
+    }
+
+    notify_all_admins(
+        $pdo,
+        'pending_post',
+        'Post awaiting approval',
+        $author_name . ' submitted "' . excerpt($post['title'], 40) . '".',
+        'admin/posts.php?status=Pending',
+        false,
+        isLoggedIn() ? (int) $_SESSION['user_id'] : 0
+    );
+}
+
+function notify_admins_pending_comment($pdo, $post_id, $commenter_name)
+{
+    $stmt = $pdo->prepare('SELECT title FROM posts WHERE id = :id');
+    $stmt->execute(array('id' => (int) $post_id));
+    $post = $stmt->fetch();
+    if (!$post) {
+        return;
+    }
+
+    notify_all_admins(
+        $pdo,
+        'pending_comment',
+        'Comment awaiting approval',
+        $commenter_name . ' commented on "' . excerpt($post['title'], 40) . '".',
+        'admin/comments.php?status=pending'
+    );
+}
+
+function notify_admins_content_report($pdo, $report_id, $reason)
+{
+    notify_all_admins(
+        $pdo,
+        'content_report',
+        'New content report',
+        excerpt($reason, 80),
+        'admin/reports.php?action=view&id=' . (int) $report_id
+    );
+}
+
+function find_user_id_for_email($pdo, $email)
+{
+    $email = trim((string) $email);
+    if ($email == '' || is_placeholder_oauth_email($email)) {
+        return 0;
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1');
+    $stmt->execute(array('email' => $email));
+    $row = $stmt->fetch();
+    if (!$row) {
+        return 0;
+    }
+
+    return (int) $row['id'];
+}
+
+function notify_user_contact_reply($pdo, $message)
+{
+    if (!is_array($message) || !isset($message['id'])) {
+        return;
+    }
+
+    $user_id = 0;
+    if (isset($message['user_id']) && (int) $message['user_id'] > 0) {
+        $user_id = (int) $message['user_id'];
+    }
+    if ($user_id <= 0 && isset($message['email'])) {
+        $user_id = find_user_id_for_email($pdo, $message['email']);
+    }
+    if ($user_id <= 0) {
+        return;
+    }
+
+    $reply_preview = '';
+    if (isset($message['admin_reply'])) {
+        $reply_preview = excerpt(trim($message['admin_reply']), 120);
+    }
+
+    $subject_line = 'your message';
+    if (isset($message['subject']) && trim($message['subject']) != '') {
+        $subject_line = trim($message['subject']);
+    }
+
+    create_notification(
+        $pdo,
+        $user_id,
+        'contact_reply',
+        'Support replied: ' . excerpt($subject_line, 42),
+        $reply_preview,
+        'support.php?message=' . (int) $message['id'],
+        true
+    );
+}
+
+function notify_followers_on_new_post($pdo, $post_id)
+{
+    $stmt = $pdo->prepare("SELECT p.id, p.user_id, p.title, p.slug, p.status, u.name AS author_name
+        FROM posts p
+        LEFT JOIN users u ON u.id = p.user_id
+        WHERE p.id = :id");
+    $stmt->execute(array('id' => (int) $post_id));
+    $post = $stmt->fetch();
+
+    if (!$post || $post['status'] != 'Published' || !$post['user_id']) {
+        return;
+    }
+
+    try {
+        $followers_stmt = $pdo->prepare('SELECT follower_id FROM user_follows WHERE following_id = :uid');
+        $followers_stmt->execute(array('uid' => (int) $post['user_id']));
+        $follower_ids = $followers_stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        return;
+    }
+
+    if (count($follower_ids) == 0) {
+        return;
+    }
+
+    $author_name = $post['author_name'];
+    if ($author_name == '') {
+        $author_name = 'Someone you follow';
+    }
+
+    $title = 'New post from ' . excerpt($author_name, 30);
+    $message = excerpt($post['title'], 60);
+    $link = 'post/' . rawurlencode($post['slug']);
+
+    foreach ($follower_ids as $follower_id) {
+        $follower_id = (int) $follower_id;
+        if ($follower_id <= 0 || $follower_id == (int) $post['user_id']) {
+            continue;
+        }
+        create_notification(
+            $pdo,
+            $follower_id,
+            'new_post',
+            $title,
+            $message,
+            $link,
+            false
         );
     }
 }
@@ -282,7 +588,7 @@ function notify_comment_approved($pdo, $comment_id)
         'comment_approved',
         'Comment approved',
         'Your comment is now visible on the post.',
-        'post.php?slug=' . urlencode($comment['post_slug']) . '#comments'
+        'post/' . rawurlencode($comment['post_slug']) . '#comments'
     );
 }
 
@@ -301,17 +607,18 @@ function author_unread_counts($pdo, $user_id)
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM posts WHERE user_id = :uid AND status = 'Pending'");
+        $sql = "SELECT
+            (SELECT COUNT(*) FROM posts WHERE user_id = :uid AND status = 'Pending') AS pending_posts,
+            (SELECT COUNT(*) FROM post_comments c INNER JOIN posts p ON p.id = c.post_id WHERE p.user_id = :uid AND c.status = 'pending') AS pending_comments,
+            (SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = FALSE) AS notifications";
+        $stmt = $pdo->prepare($sql);
         $stmt->execute(array('uid' => (int) $user_id));
-        $counts['pending_posts'] = (int) $stmt->fetchColumn();
-
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM post_comments c
-            INNER JOIN posts p ON p.id = c.post_id
-            WHERE p.user_id = :uid AND c.status = 'pending'");
-        $stmt->execute(array('uid' => (int) $user_id));
-        $counts['pending_comments'] = (int) $stmt->fetchColumn();
-
-        $counts['notifications'] = unread_notification_count($pdo, (int) $user_id);
+        $row = $stmt->fetch();
+        if ($row) {
+            $counts['pending_posts'] = (int) $row['pending_posts'];
+            $counts['pending_comments'] = (int) $row['pending_comments'];
+            $counts['notifications'] = (int) $row['notifications'];
+        }
     } catch (PDOException $e) {
         // Tables may not exist yet.
     }
@@ -340,8 +647,32 @@ function delete_post_owner_comment($pdo, $comment_id)
         return array('ok' => false, 'error' => 'You cannot remove this comment.');
     }
 
-    $pdo->prepare('DELETE FROM post_comments WHERE id = :id')->execute(array('id' => (int) $comment_id));
+    soft_delete_comment($pdo, (int) $comment_id);
     log_activity($pdo, 'comment.removed_by_author', 'Comment #' . $comment_id);
+    return array('ok' => true);
+}
+
+function moderate_post_owner_comment($pdo, $comment_id, $status)
+{
+    $comment = get_comment_by_id($pdo, $comment_id);
+    if (!$comment || !can_moderate_post_comment($comment)) {
+        return array('ok' => false, 'error' => 'You cannot moderate this comment.');
+    }
+
+    if ($status != 'approved' && $status != 'rejected') {
+        return array('ok' => false, 'error' => 'Invalid comment status.');
+    }
+
+    $pdo->prepare('UPDATE post_comments SET status = :status WHERE id = :id')->execute(array(
+        'status' => $status,
+        'id' => (int) $comment_id,
+    ));
+
+    if ($status == 'approved') {
+        notify_comment_approved($pdo, $comment_id);
+    }
+
+    log_activity($pdo, 'comment.' . $status . '_by_author', 'Comment #' . $comment_id);
     return array('ok' => true);
 }
 
@@ -469,5 +800,88 @@ function notification_icon($type)
     if ($type == 'new_follower') {
         return 'fa-user-plus text-info';
     }
+    if ($type == 'new_post') {
+        return 'fa-newspaper text-warning';
+    }
+    if ($type == 'contact_message') {
+        return 'fa-envelope-open-text text-warning';
+    }
+    if ($type == 'contact_reply') {
+        return 'fa-headset text-success';
+    }
+    if ($type == 'contact_sent') {
+        return 'fa-paper-plane text-info';
+    }
+    if ($type == 'pending_post') {
+        return 'fa-hourglass-half text-warning';
+    }
+    if ($type == 'pending_comment') {
+        return 'fa-comment-medical text-warning';
+    }
+    if ($type == 'comment_reply') {
+        return 'fa-reply text-info';
+    }
+    if ($type == 'content_report') {
+        return 'fa-flag text-danger';
+    }
     return 'fa-bell text-secondary';
+}
+
+function user_liked_post($pdo, $post_id, $user_id)
+{
+    if ($post_id <= 0 || $user_id <= 0) {
+        return false;
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM post_likes WHERE post_id = :pid AND user_id = :uid');
+    $stmt->execute(array('pid' => (int) $post_id, 'uid' => (int) $user_id));
+    return (bool) $stmt->fetch();
+}
+
+function toggle_post_like($pdo, $post_id, $user_id, $toggle = true)
+{
+    if ($post_id <= 0 || $user_id <= 0) {
+        return array('success' => false, 'message' => 'Invalid request.');
+    }
+
+    $stmt = $pdo->prepare('SELECT id, likes FROM posts WHERE id = :id AND status = :status');
+    $stmt->execute(array('id' => (int) $post_id, 'status' => 'Published'));
+    $post = $stmt->fetch();
+
+    if (!$post) {
+        return array('success' => false, 'message' => 'Post not found.');
+    }
+
+    $check = $pdo->prepare('SELECT id FROM post_likes WHERE post_id = :pid AND user_id = :uid');
+    $check->execute(array('pid' => (int) $post_id, 'uid' => (int) $user_id));
+    $existing = $check->fetch();
+
+    if ($existing) {
+        if (!$toggle) {
+            return array(
+                'success' => true,
+                'liked' => true,
+                'likes' => (int) $post['likes'],
+                'message' => 'You already liked this post',
+            );
+        }
+
+        $pdo->prepare('DELETE FROM post_likes WHERE id = :id')->execute(array('id' => (int) $existing['id']));
+        $pdo->prepare('UPDATE posts SET likes = GREATEST(likes - 1, 0) WHERE id = :id')->execute(array('id' => (int) $post_id));
+        $likes_stmt = $pdo->prepare('SELECT likes FROM posts WHERE id = :id');
+        $likes_stmt->execute(array('id' => (int) $post_id));
+        $likes = (int) $likes_stmt->fetchColumn();
+
+        return array('success' => true, 'liked' => false, 'likes' => $likes, 'message' => 'Like removed');
+    }
+
+    $insert = $pdo->prepare('INSERT INTO post_likes (post_id, user_id) VALUES (:pid, :uid)');
+    $insert->execute(array('pid' => (int) $post_id, 'uid' => (int) $user_id));
+    $pdo->prepare('UPDATE posts SET likes = likes + 1 WHERE id = :id')->execute(array('id' => (int) $post_id));
+
+    $likes_stmt = $pdo->prepare('SELECT likes FROM posts WHERE id = :id');
+    $likes_stmt->execute(array('id' => (int) $post_id));
+    $likes = (int) $likes_stmt->fetchColumn();
+
+    return array('success' => true, 'liked' => true, 'likes' => $likes, 'message' => 'Post liked');
 }

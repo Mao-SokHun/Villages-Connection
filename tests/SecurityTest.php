@@ -26,4 +26,27 @@ class SecurityTest extends TestCase
         $_POST['csrf_token'] = 'xyz';
         $this->assertFalse(verify_csrf_token());
     }
+
+    public function testHstsHeaderValueWhenHttps()
+    {
+        $_SERVER['HTTPS'] = 'on';
+        putenv('HSTS_ENABLED=true');
+        putenv('HSTS_MAX_AGE=31536000');
+        putenv('HSTS_INCLUDE_SUBDOMAINS=true');
+
+        $value = hsts_header_value();
+        $this->assertStringContainsString('max-age=31536000', $value);
+        $this->assertStringContainsString('includeSubDomains', $value);
+
+        unset($_SERVER['HTTPS']);
+    }
+
+    public function testHstsHeaderValueEmptyOnHttp()
+    {
+        unset($_SERVER['HTTPS']);
+        unset($_SERVER['HTTP_X_FORWARDED_PROTO']);
+        putenv('HSTS_ENABLED=true');
+
+        $this->assertSame('', hsts_header_value());
+    }
 }

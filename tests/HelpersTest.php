@@ -16,6 +16,9 @@ class HelpersTest extends TestCase
 
     public function testPostUrl()
     {
+        putenv('PRETTY_URLS=true');
+        $this->assertSame('/post/my-post', post_url('my-post'));
+        putenv('PRETTY_URLS=false');
         $this->assertSame('post/my-post', post_url('my-post'));
     }
 

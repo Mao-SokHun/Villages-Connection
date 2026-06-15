@@ -15,6 +15,8 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 COPY . /var/www/html
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 RUN mkdir -p /var/www/html/public/uploads \
     && chown -R www-data:www-data /var/www/html \

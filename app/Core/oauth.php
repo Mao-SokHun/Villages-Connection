@@ -11,39 +11,36 @@ function oauth_setting($key, $default)
 
 function oauth_base_url()
 {
+    if (isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] != '') {
+        $scheme = 'http';
+        if (function_exists('request_scheme')) {
+            $scheme = request_scheme();
+        } elseif (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') {
+            $scheme = 'https';
+        }
+        return $scheme . '://' . $_SERVER['HTTP_HOST'];
+    }
+
     $configured = oauth_setting('OAUTH_BASE_URL', '');
     if ($configured != '') {
         return rtrim($configured, '/');
     }
 
-    $scheme = 'http';
-    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') {
-        $scheme = 'https';
+    if (defined('APP_URL') && APP_URL != '') {
+        return rtrim(APP_URL, '/');
     }
 
-    $host = 'localhost';
-    if (isset($_SERVER['HTTP_HOST'])) {
-        $host = $_SERVER['HTTP_HOST'];
-    }
-
-    return $scheme . '://' . $host;
+    return 'http://localhost:8080';
 }
 
 function oauth_redirect_uri($provider)
 {
-    if ($provider == 'google') {
-        $custom = oauth_setting('GOOGLE_REDIRECT_URI', '');
-        if ($custom != '') {
-            return $custom;
-        }
-        return oauth_base_url() . '/auth/google-callback.php';
+    $path = '/auth/google-callback.php';
+    if ($provider == 'facebook') {
+        $path = '/auth/facebook-callback.php';
     }
 
-    $custom = oauth_setting('FACEBOOK_REDIRECT_URI', '');
-    if ($custom != '') {
-        return $custom;
-    }
-    return oauth_base_url() . '/auth/facebook-callback.php';
+    return oauth_base_url() . $path;
 }
 
 function oauth_is_configured($provider)
@@ -101,9 +98,47 @@ function oauth_verify_state($provider, $state)
     return true;
 }
 
+function oauth_last_error()
+{
+    if (isset($GLOBALS['oauth_last_error'])) {
+        return $GLOBALS['oauth_last_error'];
+    }
+    return '';
+}
+
+function oauth_set_last_error($message)
+{
+    $GLOBALS['oauth_last_error'] = $message;
+}
+
+function oauth_parse_api_error($response)
+{
+    if ($response == false || $response == '') {
+        return 'Could not reach the provider API.';
+    }
+
+    $data = json_decode($response, true);
+    if (!is_array($data)) {
+        return 'Unexpected provider response.';
+    }
+
+    if (isset($data['error']['message'])) {
+        return $data['error']['message'];
+    }
+    if (isset($data['error_message'])) {
+        return $data['error_message'];
+    }
+    if (isset($data['error']['type'])) {
+        return $data['error']['type'];
+    }
+
+    return 'Provider request failed.';
+}
+
 function oauth_http_request($method, $url, $body, $headers)
 {
     if (!function_exists('curl_init')) {
+        oauth_set_last_error('cURL is not available on the server.');
         return false;
     }
 
@@ -125,11 +160,23 @@ function oauth_http_request($method, $url, $body, $headers)
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($response == false || $status < 200 || $status >= 300) {
+    if ($response == false) {
+        oauth_set_last_error('Network error contacting provider.');
         return false;
     }
 
+    if ($status < 200 || $status >= 300) {
+        oauth_set_last_error(oauth_parse_api_error($response));
+        return false;
+    }
+
+    oauth_set_last_error('');
     return $response;
+}
+
+function facebook_graph_version()
+{
+    return 'v22.0';
 }
 
 function google_auth_url()
@@ -206,22 +253,32 @@ function google_fetch_user($code)
     );
 }
 
+function facebook_oauth_scope()
+{
+    $scope = oauth_setting('FACEBOOK_OAUTH_SCOPE', 'public_profile');
+    if ($scope == '') {
+        $scope = 'public_profile';
+    }
+    return $scope;
+}
+
 function facebook_auth_url()
 {
     $params = array(
         'client_id' => oauth_setting('FACEBOOK_APP_ID', ''),
         'redirect_uri' => oauth_redirect_uri('facebook'),
         'state' => oauth_start_state('facebook'),
-        'scope' => 'email,public_profile',
+        'scope' => facebook_oauth_scope(),
         'response_type' => 'code'
     );
 
-    return 'https://www.facebook.com/v19.0/dialog/oauth?' . http_build_query($params);
+    return 'https://www.facebook.com/' . facebook_graph_version() . '/dialog/oauth?' . http_build_query($params);
 }
 
 function facebook_fetch_user($code)
 {
-    $token_url = 'https://graph.facebook.com/v19.0/oauth/access_token?' . http_build_query(array(
+    $graph = facebook_graph_version();
+    $token_url = 'https://graph.facebook.com/' . $graph . '/oauth/access_token?' . http_build_query(array(
         'client_id' => oauth_setting('FACEBOOK_APP_ID', ''),
         'client_secret' => oauth_setting('FACEBOOK_APP_SECRET', ''),
         'redirect_uri' => oauth_redirect_uri('facebook'),
@@ -235,11 +292,17 @@ function facebook_fetch_user($code)
 
     $token_data = json_decode($token_raw, true);
     if (!is_array($token_data) || !isset($token_data['access_token'])) {
+        oauth_set_last_error('Facebook did not return an access token.');
         return false;
     }
 
-    $profile_url = 'https://graph.facebook.com/me?' . http_build_query(array(
-        'fields' => 'id,name,email,picture.type(large)',
+    $fields = 'id,name,picture.type(large)';
+    if (strpos(facebook_oauth_scope(), 'email') !== false) {
+        $fields = 'id,name,email,picture.type(large)';
+    }
+
+    $profile_url = 'https://graph.facebook.com/' . $graph . '/me?' . http_build_query(array(
+        'fields' => $fields,
         'access_token' => $token_data['access_token']
     ));
 
@@ -250,6 +313,7 @@ function facebook_fetch_user($code)
 
     $profile = json_decode($profile_raw, true);
     if (!is_array($profile) || !isset($profile['id'])) {
+        oauth_set_last_error('Facebook profile response was invalid.');
         return false;
     }
 
@@ -266,6 +330,8 @@ function facebook_fetch_user($code)
     $avatar = '';
     if (isset($profile['picture']['data']['url'])) {
         $avatar = trim($profile['picture']['data']['url']);
+    } elseif (isset($profile['picture']['url'])) {
+        $avatar = trim($profile['picture']['url']);
     }
 
     return array(
@@ -277,20 +343,207 @@ function facebook_fetch_user($code)
     );
 }
 
+function oauth_download_avatar($avatar_url)
+{
+    if ($avatar_url == '' || !function_exists('upload_path')) {
+        return '';
+    }
+
+    if (!function_exists('curl_init')) {
+        return '';
+    }
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $avatar_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; VillageConnect/1.0)');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        'Accept: image/avif,image/webp,image/apng,image/*,*/*;q=0.8'
+    ));
+
+    $data = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    curl_close($ch);
+
+    if ($data == false || $status < 200 || $status >= 300 || strlen($data) < 64) {
+        return '';
+    }
+
+    $ext = 'jpg';
+    if (is_string($content_type)) {
+        if (strpos($content_type, 'png') !== false) {
+            $ext = 'png';
+        } elseif (strpos($content_type, 'webp') !== false) {
+            $ext = 'webp';
+        } elseif (strpos($content_type, 'gif') !== false) {
+            $ext = 'gif';
+        }
+    }
+
+    $name = 'oauth_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    $path = upload_path('avatars') . $name;
+
+    if (file_put_contents($path, $data) !== false) {
+        return $name;
+    }
+
+    return '';
+}
+
+function oauth_prepare_avatar_for_db($avatar)
+{
+    if ($avatar == '') {
+        return '';
+    }
+
+    if (function_exists('is_external_avatar') && is_external_avatar($avatar)) {
+        $local = oauth_download_avatar($avatar);
+        if ($local != '') {
+            return $local;
+        }
+
+        return $avatar;
+    }
+
+    if (function_exists('normalize_avatar_filename')) {
+        $avatar = normalize_avatar_filename($avatar);
+    }
+
+    if (strlen($avatar) > 255) {
+        return substr($avatar, 0, 255);
+    }
+
+    return $avatar;
+}
+
+function oauth_fetch_provider_avatar_url($provider, $oauth_id)
+{
+    $provider = strtolower(trim((string) $provider));
+    $oauth_id = trim((string) $oauth_id);
+    if ($oauth_id == '') {
+        return '';
+    }
+
+    if ($provider == 'facebook' && oauth_is_configured('facebook')) {
+        $token = oauth_setting('FACEBOOK_APP_ID', '') . '|' . oauth_setting('FACEBOOK_APP_SECRET', '');
+        $graph = facebook_graph_version();
+        $url = 'https://graph.facebook.com/' . $graph . '/' . rawurlencode($oauth_id) . '/picture?' . http_build_query(array(
+            'type' => 'large',
+            'redirect' => 'false',
+            'access_token' => $token
+        ));
+
+        $raw = oauth_http_request('GET', $url, '', array());
+        if ($raw == false) {
+            return '';
+        }
+
+        $data = json_decode($raw, true);
+        if (!is_array($data) || !isset($data['data']['url'])) {
+            return '';
+        }
+
+        return trim($data['data']['url']);
+    }
+
+    return '';
+}
+
+function oauth_ensure_user_avatar($pdo, $user)
+{
+    if (!is_array($user) || !isset($user['id']) || !is_oauth_user($user)) {
+        return $user;
+    }
+
+    $oauth_id = '';
+    if (isset($user['oauth_id'])) {
+        $oauth_id = trim((string) $user['oauth_id']);
+    }
+
+    $provider = '';
+    if (isset($user['oauth_provider'])) {
+        $provider = trim((string) $user['oauth_provider']);
+    }
+
+    $avatar = '';
+    if (isset($user['avatar'])) {
+        $avatar = normalize_avatar_filename($user['avatar']);
+    }
+
+    if ($avatar != '' && user_avatar_exists($avatar)) {
+        return $user;
+    }
+
+    $picture = oauth_fetch_provider_avatar_url($provider, $oauth_id);
+    if ($picture == '') {
+        return $user;
+    }
+
+    return oauth_refresh_user_profile($pdo, $user, $picture);
+}
+
+function oauth_refresh_user_profile($pdo, $user, $avatar)
+{
+    if ($avatar == '' || !is_array($user) || !isset($user['id'])) {
+        return $user;
+    }
+
+    $prepared = oauth_prepare_avatar_for_db($avatar);
+    if ($prepared == '') {
+        return $user;
+    }
+
+    $current = '';
+    if (isset($user['avatar'])) {
+        $current = $user['avatar'];
+    }
+
+    $should_update = false;
+    if ($current == '') {
+        $should_update = true;
+    } elseif (function_exists('is_external_avatar') && is_external_avatar($current)) {
+        $should_update = true;
+    } elseif (function_exists('normalize_avatar_filename')) {
+        $normalized = normalize_avatar_filename($current);
+        if ($normalized != '' && !is_external_avatar($normalized) && !user_avatar_exists($normalized)) {
+            $should_update = true;
+        }
+    }
+
+    if (!$should_update) {
+        return $user;
+    }
+
+    if ($current != '' && !is_external_avatar($current) && function_exists('delete_upload')) {
+        delete_upload($current, 'avatars');
+    }
+
+    $stmt = $pdo->prepare('UPDATE users SET avatar = :avatar WHERE id = :id');
+    $stmt->execute(array(
+        'avatar' => $prepared,
+        'id' => $user['id']
+    ));
+
+    return get_user_by_id($pdo, $user['id']);
+}
+
 function oauth_find_or_create_user($pdo, $profile)
 {
     $provider = $profile['provider'];
     $oauth_id = $profile['oauth_id'];
     $email = $profile['email'];
     $name = $profile['name'];
-    $avatar = $profile['avatar'];
+    $avatar = oauth_prepare_avatar_for_db($profile['avatar']);
 
     $sql = 'SELECT * FROM users WHERE oauth_provider = :provider AND oauth_id = :oauth_id LIMIT 1';
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array('provider' => $provider, 'oauth_id' => $oauth_id));
     $user = $stmt->fetch();
     if ($user) {
-        return $user;
+        return oauth_refresh_user_profile($pdo, $user, $profile['avatar']);
     }
 
     if ($email != '') {
@@ -307,7 +560,7 @@ function oauth_find_or_create_user($pdo, $profile)
                 'id' => $user['id']
             );
 
-            if ($avatar != '' && (!isset($user['avatar']) || $user['avatar'] == '')) {
+            if ($avatar != '' && (!isset($user['avatar']) || $user['avatar'] == '' || is_external_avatar($user['avatar']))) {
                 $sql = $sql . ', avatar = :avatar';
                 $params['avatar'] = $avatar;
             }
@@ -360,11 +613,23 @@ function login_user_session($user)
     if (isset($user['avatar'])) {
         $_SESSION['user_avatar'] = $user['avatar'];
     }
+    $_SESSION['oauth_provider'] = 'local';
+    if (isset($user['oauth_provider']) && $user['oauth_provider'] != '') {
+        $_SESSION['oauth_provider'] = $user['oauth_provider'];
+    }
+    $_SESSION['account_status'] = user_account_status($user);
+    $_SESSION['is_banned'] = user_is_banned($user);
 }
 
 function oauth_login_redirect($user)
 {
     global $pdo;
+
+    if (user_is_deleted($user)) {
+        setFlashMessage('danger', 'This account has been closed.');
+        header('Location: ../login.php');
+        exit;
+    }
 
     if (user_is_banned($user)) {
         setFlashMessage('danger', 'This account has been suspended.');
@@ -373,6 +638,9 @@ function oauth_login_redirect($user)
     }
 
     login_user_session($user);
+    if (!is_placeholder_oauth_email($user['email'])) {
+        mark_user_email_verified($pdo, (int) $user['id']);
+    }
     log_activity($pdo, 'user.oauth_login', $user['email']);
     setFlashMessage('success', 'Welcome, ' . $user['name'] . '!');
 
@@ -402,7 +670,12 @@ function oauth_handle_callback($provider, $code, $state)
     }
 
     if ($profile == false) {
-        setFlashMessage('danger', 'Could not verify your social account. Check your app keys and redirect URI.');
+        $message = 'Could not verify your social account. Check your app keys and redirect URI.';
+        $provider_error = oauth_last_error();
+        if ($provider_error != '') {
+            $message = 'Social login failed: ' . $provider_error;
+        }
+        setFlashMessage('danger', $message);
         header('Location: ../login.php');
         exit;
     }

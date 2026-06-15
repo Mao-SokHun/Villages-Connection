@@ -26,6 +26,7 @@ if ($admin_post) {
             if ($cat) {
                 $sql = 'DELETE FROM categories WHERE id = :id';
                 $pdo->prepare($sql)->execute(array('id' => $admin_post['id']));
+                clear_nav_category_cache();
                 setFlashMessage('success', "Category '" . $cat['name'] . "' deleted successfully.");
             } else {
                 setFlashMessage('danger', 'Category not found.');
@@ -89,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['admin_action'])) {
                     'icon' => $icon,
                     'created_by' => $created_by,
                 ));
+                clear_nav_category_cache();
                 setFlashMessage('success', "Category '" . $name . "' created successfully.");
             } elseif ($db_action == 'edit' && $id > 0) {
                 $sql = 'SELECT COUNT(*) FROM categories WHERE slug = :slug AND id != :id';
@@ -107,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['admin_action'])) {
                     'icon' => $icon,
                     'id' => $id,
                 ));
+                clear_nav_category_cache();
                 setFlashMessage('success', "Category '" . $name . "' updated successfully.");
             }
 

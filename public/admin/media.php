@@ -11,6 +11,11 @@ $admin_post = admin_post_action();
 if ($admin_post) {
     if ($admin_post['action'] == 'delete' && $admin_post['value'] != '') {
         $file = basename($admin_post['value']);
+        if (media_file_in_use($pdo, $file, $subdir)) {
+            setFlashMessage('danger', 'This file is still used by a post or profile and cannot be deleted.');
+            header('Location: media.php' . ($subdir != '' ? '?subdir=' . urlencode($subdir) : ''));
+            exit;
+        }
         delete_upload($file, $subdir);
         log_activity($pdo, 'media.deleted', $subdir . '/' . $file);
         setFlashMessage('success', 'File deleted.');

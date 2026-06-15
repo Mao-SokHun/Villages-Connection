@@ -44,14 +44,8 @@ if ($admin_post) {
         $stmt = $pdo->prepare('SELECT * FROM posts WHERE id = :id');
         $stmt->execute(array('id' => $admin_post['id']));
         $row = $stmt->fetch();
-        if ($row && admin_can_manage_post($row)) {
-            if ($row['image_url'] != '') {
-                delete_upload($row['image_url'], '');
-            }
-            if (isset($row['video_type']) && $row['video_type'] == 'upload' && $row['video_url'] != '') {
-                delete_upload($row['video_url'], 'videos');
-            }
-            $pdo->prepare('DELETE FROM posts WHERE id = :id')->execute(array('id' => $admin_post['id']));
+        if ($row && admin_can_manage_post($row) && $row['status'] != 'Deleted') {
+            soft_delete_post($pdo, $admin_post['id']);
             log_activity($pdo, 'post.deleted', 'Post #' . $admin_post['id']);
             setFlashMessage('success', 'Post deleted.');
         }
@@ -73,7 +67,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['bulk_action']) && isAd
     if (count($post_ids) > 0) {
         $placeholders = implode(',', array_fill(0, count($post_ids), '?'));
         if ($bulk_action == 'publish') {
-            $pdo->prepare("UPDATE posts SET status = 'Published' WHERE id IN ($placeholders)")->execute($post_ids);
+            $status_stmt = $pdo->prepare("SELECT id, status FROM posts WHERE id IN ($placeholders)");
+            $status_stmt->execute($post_ids);
+            foreach ($status_stmt->fetchAll() as $row) {
+                if ($row['status'] != 'Published') {
+                    notify_post_status_change($pdo, (int) $row['id'], 'Published');
+                }
+            }
+            $pdo->prepare("UPDATE posts SET status = 'Published', updated_at = CURRENT_TIMESTAMP WHERE id IN ($placeholders)")->execute($post_ids);
             log_activity($pdo, 'post.bulk_publish', count($post_ids) . ' posts');
             setFlashMessage('success', count($post_ids) . ' post(s) published.');
         } elseif ($bulk_action == 'draft') {
@@ -84,14 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['bulk_action']) && isAd
                 $stmt = $pdo->prepare('SELECT * FROM posts WHERE id = :id');
                 $stmt->execute(array('id' => $pid));
                 $row = $stmt->fetch();
-                if ($row) {
-                    if ($row['image_url'] != '') {
-                        delete_upload($row['image_url'], '');
-                    }
-                    if (isset($row['video_type']) && $row['video_type'] == 'upload' && $row['video_url'] != '') {
-                        delete_upload($row['video_url'], 'videos');
-                    }
-                    $pdo->prepare('DELETE FROM posts WHERE id = :id')->execute(array('id' => $pid));
+                if ($row && $row['status'] != 'Deleted') {
+                    soft_delete_post($pdo, (int) $pid);
                 }
             }
             log_activity($pdo, 'post.bulk_delete', count($post_ids) . ' posts');
@@ -196,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
         $errors[] = 'Content is required';
     }
     if (isAdmin()) {
-        if ($status != 'Draft' && $status != 'Published' && $status != 'Pending' && $status != 'Rejected') {
+        if ($status != 'Draft' && $status != 'Published' && $status != 'Pending' && $status != 'Rejected' && $status != 'Deleted') {
             $status = 'Draft';
         }
     } else {
@@ -290,9 +285,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
                 }
 
                 $sql = 'INSERT INTO posts (category_id, user_id, title, slug, summary, content, image_url, image_alt, video_url, video_type, location, is_featured, status)
-                        VALUES (:category_id, :user_id, :title, :slug, :summary, :content, :image_url, :image_alt, :video_url, :video_type, :location, :is_featured, :status)';
-                $pdo->prepare($sql)->execute($fields);
+                        VALUES (:category_id, :user_id, :title, :slug, :summary, :content, :image_url, :image_alt, :video_url, :video_type, :location, :is_featured, :status)
+                        RETURNING id';
+                $insert_stmt = $pdo->prepare($sql);
+                $insert_stmt->execute($fields);
+                $new_post_id = (int) $insert_stmt->fetchColumn();
                 log_activity($pdo, 'post.created', $fields['title']);
+                if ($fields['status'] == 'Published') {
+                    notify_followers_on_new_post($pdo, $new_post_id);
+                } elseif ($fields['status'] == 'Pending') {
+                    notify_admins_pending_post($pdo, $new_post_id);
+                }
                 setFlashMessage('success', $status == 'Pending' ? 'Post submitted for admin approval.' : 'Post created successfully');
             } elseif ($db_action == 'edit' && $id > 0) {
                 $check = $pdo->prepare('SELECT * FROM posts WHERE id = :id');
@@ -312,10 +315,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
                 }
                 $fields['id'] = $id;
 
+                $update_fields = $fields;
+                unset($update_fields['user_id']);
+
                 $sql = 'UPDATE posts SET category_id=:category_id, title=:title, slug=:slug, summary=:summary, content=:content,
                         image_url=:image_url, image_alt=:image_alt, video_url=:video_url, video_type=:video_type, location=:location,
                         is_featured=:is_featured, status=:status, updated_at=CURRENT_TIMESTAMP WHERE id=:id';
-                $pdo->prepare($sql)->execute($fields);
+                $pdo->prepare($sql)->execute($update_fields);
+                if ($existing_post['status'] != $fields['status']) {
+                    if ($fields['status'] == 'Published' || $fields['status'] == 'Rejected') {
+                        notify_post_status_change($pdo, $id, $fields['status']);
+                    } elseif ($fields['status'] == 'Pending') {
+                        notify_admins_pending_post($pdo, $id);
+                    }
+                }
                 setFlashMessage('success', 'Post updated successfully');
             }
             header('Location: posts.php');
@@ -461,6 +474,11 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                             ?></span>
                             <input type="file" name="image" id="image_input" class="file-upload-input" accept="image/*">
                         </div>
+                        <?php if ($current_image != '' && post_media_available($current_image, '')): ?>
+                        <div class="mt-2">
+                            <img src="<?php echo htmlspecialchars(resolve_media_src($current_image, '')); ?>" alt="Current post image" class="rounded" style="max-width:180px;max-height:120px;object-fit:cover;">
+                        </div>
+                        <?php endif; ?>
                         <div class="mt-2">
                             <label class="form-label form-label-custom small">Image Alt Text</label>
                             <input type="text" name="image_alt" class="form-control form-control-custom" maxlength="255" placeholder="Describe the image for accessibility and SEO" value="<?php if ($post && isset($post['image_alt'])) echo htmlspecialchars($post['image_alt']); ?>">
@@ -705,7 +723,7 @@ if (previewBtn && typeof bootstrap !== 'undefined') {
         $list_where .= ' AND (p.title ILIKE :search OR p.summary ILIKE :search OR u.name ILIKE :search OR c.name ILIKE :search)';
         $list_params['search'] = '%' . $list_search . '%';
     }
-    if ($list_status == 'Published' || $list_status == 'Draft' || $list_status == 'Pending' || $list_status == 'Rejected') {
+    if ($list_status == 'Published' || $list_status == 'Draft' || $list_status == 'Pending' || $list_status == 'Rejected' || $list_status == 'Deleted') {
         $list_where .= ' AND p.status = :status';
         $list_params['status'] = $list_status;
     }
@@ -750,6 +768,7 @@ if (previewBtn && typeof bootstrap !== 'undefined') {
                     <option value="Draft" <?php if ($list_status == 'Draft') echo 'selected'; ?>>Draft</option>
                     <option value="Pending" <?php if ($list_status == 'Pending') echo 'selected'; ?>>Pending</option>
                     <option value="Rejected" <?php if ($list_status == 'Rejected') echo 'selected'; ?>>Rejected</option>
+                    <option value="Deleted" <?php if ($list_status == 'Deleted') echo 'selected'; ?>>Deleted</option>
                 </select>
             </div>
             <div class="col-6 col-md-3">
@@ -813,8 +832,8 @@ if (previewBtn && typeof bootstrap !== 'undefined') {
             <?php foreach ($all_posts as $p): ?>
             <tr>
                 <?php if (isAdmin()): ?><td><input type="checkbox" name="post_ids[]" value="<?php echo (int) $p['id']; ?>" form="bulk_posts_form"></td><?php endif; ?>
-                <td><?php if ($p['image_url'] != '' && file_exists(PUBLIC_PATH . '/uploads/'.$p['image_url'])): ?>
-                    <img src="../uploads/<?php echo $p['image_url']; ?>" style="width:48px;height:48px;object-fit:cover;border-radius:8px">
+                <td><?php if ($p['image_url'] != '' && post_media_available($p['image_url'], '')): ?>
+                    <img src="<?php echo htmlspecialchars(resolve_media_src($p['image_url'], '')); ?>" style="width:48px;height:48px;object-fit:cover;border-radius:8px">
                 <?php else: ?>—<?php endif; ?></td>
                 <td class="table-cell-title"><?php echo htmlspecialchars($p['title']); ?>
                     <?php if ($p['is_featured']): ?><span class="badge bg-warning text-dark ms-1">Featured</span><?php endif; ?>
@@ -838,7 +857,11 @@ if (previewBtn && typeof bootstrap !== 'undefined') {
                     <?php render_admin_action_button('posts.php', 'approve', $p['id'], array('class' => 'btn btn-sm btn-outline-custom text-success', 'icon' => 'fa-solid fa-check', 'title' => 'Approve')); ?>
                     <?php render_admin_action_button('posts.php', 'reject', $p['id'], array('class' => 'btn btn-sm btn-outline-custom text-warning', 'icon' => 'fa-solid fa-ban', 'title' => 'Reject')); ?>
                     <?php endif; ?>
-                    <a href="../post/<?php echo urlencode($p['slug']); ?>" class="btn btn-sm btn-outline-custom" target="_blank"><i class="fa-solid fa-eye"></i></a>
+                    <?php if ($p['status'] == 'Published'): ?>
+                    <a href="../post/<?php echo urlencode($p['slug']); ?>" class="btn btn-sm btn-outline-custom" target="_blank" title="View published post"><i class="fa-solid fa-eye"></i></a>
+                    <?php else: ?>
+                    <a href="posts.php?action=edit&id=<?php echo $p['id']; ?>" class="btn btn-sm btn-outline-custom" title="Preview unavailable until published"><i class="fa-solid fa-eye-slash"></i></a>
+                    <?php endif; ?>
                     <a href="posts.php?action=edit&id=<?php echo $p['id']; ?>" class="btn btn-sm btn-outline-custom text-info"><i class="fa-solid fa-edit"></i></a>
                     <?php render_admin_action_button('posts.php', 'duplicate', $p['id'], array('class' => 'btn btn-sm btn-outline-custom text-warning', 'icon' => 'fa-solid fa-copy', 'title' => 'Duplicate as draft')); ?>
                     <?php render_admin_action_button('posts.php', 'delete', $p['id'], array('class' => 'btn btn-sm btn-outline-custom text-danger', 'icon' => 'fa-solid fa-trash', 'title' => 'Delete', 'confirm' => 'Delete this post?')); ?>

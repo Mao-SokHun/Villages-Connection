@@ -1,5 +1,54 @@
 <?php
 
+function request_is_https()
+{
+    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== '' && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') {
+        return true;
+    }
+
+    if (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443) {
+        return true;
+    }
+
+    return false;
+}
+
+function normalize_https_request()
+{
+    if (request_is_https()) {
+        $_SERVER['HTTPS'] = 'on';
+    }
+}
+
+function hsts_header_value()
+{
+    $enabled = getenv('HSTS_ENABLED');
+    if ($enabled === 'false' || $enabled === '0') {
+        return '';
+    }
+
+    if (!request_is_https()) {
+        return '';
+    }
+
+    $max_age = (int) getenv('HSTS_MAX_AGE');
+    if ($max_age <= 0) {
+        $max_age = 31536000;
+    }
+
+    $value = 'max-age=' . $max_age;
+    $include = getenv('HSTS_INCLUDE_SUBDOMAINS');
+    if ($include === 'true' || $include === '1') {
+        $value .= '; includeSubDomains';
+    }
+
+    return $value;
+}
+
 function send_security_headers()
 {
     if (headers_sent()) {
@@ -10,7 +59,16 @@ function send_security_headers()
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('X-XSS-Protection: 1; mode=block');
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+    header('Cross-Origin-Opener-Policy: same-origin');
+    header('Cross-Origin-Resource-Policy: same-site');
+    header('X-Permitted-Cross-Domain-Policies: none');
     header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com; connect-src 'self'");
+
+    $hsts = hsts_header_value();
+    if ($hsts != '') {
+        header('Strict-Transport-Security: ' . $hsts);
+    }
 }
 
 function csrf_token()
@@ -58,60 +116,72 @@ function require_valid_csrf()
     }
 }
 
+function require_valid_csrf_json($message = 'Security check failed. Please refresh the page.')
+{
+    if (!verify_csrf_token()) {
+        echo json_encode(array('success' => false, 'message' => $message));
+        exit;
+    }
+}
+
+function client_rate_limit_id()
+{
+    $ip = client_ip_address();
+
+    if (isLoggedIn()) {
+        return 'user:' . (int) $_SESSION['user_id'] . '|ip:' . $ip;
+    }
+
+    return 'ip:' . $ip;
+}
+
+function rate_limit_blocked_response($action, $id, $window_seconds, $as_json = false)
+{
+    $wait = rate_limit_remaining_seconds($action, $id, $window_seconds);
+    $mins = (int) ceil($wait / 60);
+    if ($mins < 1) {
+        $mins = 1;
+    }
+    $message = 'Too many requests. Please wait about ' . $mins . ' minute(s) and try again.';
+
+    if ($as_json) {
+        echo json_encode(array('success' => false, 'message' => $message));
+        exit;
+    }
+
+    return $message;
+}
+
+function enforce_rate_limit_or_exit($action, $id, $max_attempts, $window_seconds, $as_json = false)
+{
+    if (!rate_limit_hit($action, $id, $max_attempts, $window_seconds)) {
+        rate_limit_blocked_response($action, $id, $window_seconds, $as_json);
+    }
+}
+
 function rate_limit_key($action, $id)
 {
-    $id = strtolower(trim($id));
-    return $action . ':' . $id;
+    return rate_limit_storage_key($action, $id);
 }
 
 function rate_limit_hit($action, $id, $max_attempts, $window_seconds)
 {
-    if (!isset($_SESSION['rate_limits'])) {
-        $_SESSION['rate_limits'] = array();
+    if (rate_limit_driver() === 'database') {
+        global $pdo;
+        return rate_limit_hit_db($pdo, $action, $id, $max_attempts, $window_seconds);
     }
 
-    $key = rate_limit_key($action, $id);
-    $now = time();
-
-    if (!isset($_SESSION['rate_limits'][$key])) {
-        $_SESSION['rate_limits'][$key] = array();
-    }
-
-    $hits = array();
-    foreach ($_SESSION['rate_limits'][$key] as $hit_time) {
-        if (($now - $hit_time) < $window_seconds) {
-            $hits[] = $hit_time;
-        }
-    }
-
-    $hits[] = $now;
-    $_SESSION['rate_limits'][$key] = $hits;
-
-    if (count($hits) > $max_attempts) {
-        return false;
-    }
-
-    return true;
+    return rate_limit_hit_session($action, $id, $max_attempts, $window_seconds);
 }
 
 function rate_limit_remaining_seconds($action, $id, $window_seconds)
 {
-    if (!isset($_SESSION['rate_limits'][rate_limit_key($action, $id)])) {
-        return 0;
+    if (rate_limit_driver() === 'database') {
+        global $pdo;
+        return rate_limit_remaining_seconds_db($pdo, $action, $id, $window_seconds);
     }
 
-    $hits = $_SESSION['rate_limits'][rate_limit_key($action, $id)];
-    if (count($hits) == 0) {
-        return 0;
-    }
-
-    $oldest = $hits[0];
-    $left = $window_seconds - (time() - $oldest);
-    if ($left < 0) {
-        return 0;
-    }
-
-    return $left;
+    return rate_limit_remaining_seconds_session($action, $id, $window_seconds);
 }
 
 function login_is_locked($email)
@@ -119,6 +189,11 @@ function login_is_locked($email)
     $email = strtolower(trim($email));
     if ($email == '') {
         return false;
+    }
+
+    if (rate_limit_driver() === 'database') {
+        global $pdo;
+        return rate_limit_is_exceeded_db($pdo, 'login_fail', 'email:' . $email, 5, 900);
     }
 
     if (!isset($_SESSION['login_locks'])) {
@@ -158,6 +233,12 @@ function register_login_fail($email)
         return;
     }
 
+    if (rate_limit_driver() === 'database') {
+        global $pdo;
+        rate_limit_hit_db($pdo, 'login_fail', 'email:' . $email, 5, 900);
+        return;
+    }
+
     if (!isset($_SESSION['login_fails'])) {
         $_SESSION['login_fails'] = array();
     }
@@ -180,6 +261,12 @@ function register_login_fail($email)
 function clear_login_fails($email)
 {
     $email = strtolower(trim($email));
+    if (rate_limit_driver() === 'database') {
+        global $pdo;
+        rate_limit_clear_db($pdo, 'login_fail', 'email:' . $email);
+        return;
+    }
+
     if (isset($_SESSION['login_fails'][$email])) {
         unset($_SESSION['login_fails'][$email]);
     }

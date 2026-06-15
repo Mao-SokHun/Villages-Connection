@@ -43,7 +43,7 @@
     <div class="col-lg-9">
         <div class="glass-panel p-4 p-md-5 reveal">
             <h4 class="text-white mb-3"><i class="fa-solid fa-envelope text-warning me-2"></i>Get in Touch</h4>
-            <p class="text-secondary">For support, content reports, or partnership questions, use our <a href="contact.php" class="footer-link">Contact form</a> or send a report for problematic posts.</p>
+            <p class="text-secondary">For support, content reports, or partnership questions, email <a href="mailto:<?php echo htmlspecialchars(site_contact_email()); ?>" class="footer-link"><?php echo htmlspecialchars(site_contact_email()); ?></a>, use our <a href="contact.php" class="footer-link">Contact form</a>, or send a report for problematic posts.</p>
             <ul class="auth-features text-secondary">
                 <li><i class="fa-solid fa-check"></i> Account or login issues — try <a href="faq.php" class="footer-link">FAQ</a> first</li>
                 <li><i class="fa-solid fa-check"></i> Password problems — use <a href="forgot-password.php" class="footer-link">Forgot Password</a></li>

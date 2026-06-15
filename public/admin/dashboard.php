@@ -274,12 +274,12 @@ if (isset($category_rows)) {
     <div class="chart-wrap chart-wrap-wide chart-wrap-tall"><canvas id="chartEngagement"></canvas></div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-lg-5">
-        <div class="glass-panel dash-chart-panel h-100 reveal">
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="glass-panel dash-chart-panel dash-chart-panel-compact h-100 reveal">
             <h5 class="dash-chart-title"><i class="fa-solid fa-chart-pie text-warning me-2"></i>Post Status</h5>
-            <p class="text-secondary small mb-3">Published vs draft breakdown</p>
-            <div class="chart-wrap chart-wrap-donut position-relative">
+            <p class="text-secondary small mb-2">Published vs draft breakdown</p>
+            <div class="chart-wrap chart-wrap-compact position-relative">
                 <canvas id="chartPostStatus"></canvas>
                 <?php if ($published_posts == 0 && $draft_posts == 0): ?>
                 <div class="chart-empty-hint">No posts yet — create your first post to see this chart.</div>
@@ -287,11 +287,11 @@ if (isset($category_rows)) {
             </div>
         </div>
     </div>
-    <div class="col-lg-7">
-        <div class="glass-panel dash-chart-panel h-100 reveal">
+    <div class="col-md-6">
+        <div class="glass-panel dash-chart-panel dash-chart-panel-compact h-100 reveal">
             <h5 class="dash-chart-title"><i class="fa-solid fa-tags text-warning me-2"></i>Posts by Category</h5>
-            <p class="text-secondary small mb-3"><?php if ($is_author_view): ?>Topics you write about most<?php else: ?>Content distribution across categories<?php endif; ?></p>
-            <div class="chart-wrap chart-wrap-donut position-relative">
+            <p class="text-secondary small mb-2"><?php if ($is_author_view): ?>Topics you write about most<?php else: ?>Content distribution across categories<?php endif; ?></p>
+            <div class="chart-wrap chart-wrap-compact position-relative">
                 <canvas id="chartCategories"></canvas>
                 <?php if (count($chart_cat_labels) == 0): ?>
                 <div class="chart-empty-hint">No category data yet.</div>
@@ -339,7 +339,7 @@ if (isset($category_rows)) {
                     <td class="text-end table-cell-strong"><?php echo (int) $pop['views']; ?></td>
                     <td class="text-end table-cell-strong"><?php echo (int) $pop['likes']; ?></td>
                     <td class="text-end text-nowrap">
-                        <a href="../post.php?slug=<?php echo urlencode($pop['slug']); ?>" class="btn btn-sm btn-outline-custom" target="_blank" title="View"><i class="fa-solid fa-eye"></i></a>
+                        <a href="<?php echo htmlspecialchars(post_url($pop['slug'], '../')); ?>" class="btn btn-sm btn-outline-custom" target="_blank" title="View"><i class="fa-solid fa-eye"></i></a>
                         <a href="posts.php?action=edit&id=<?php echo (int) $pop['id']; ?>" class="btn btn-sm btn-outline-custom text-info" title="Edit"><i class="fa-solid fa-edit"></i></a>
                     </td>
                 </tr>
@@ -565,7 +565,8 @@ if (isset($category_rows)) {
             plugins: {
                 legend: {
                     display: !statusEmpty,
-                    position: 'bottom'
+                    position: 'bottom',
+                    labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
                 },
                 tooltip: Object.assign(chartTooltip(), {
                     callbacks: {
@@ -670,7 +671,10 @@ if (isset($category_rows)) {
             maintainAspectRatio: false,
             onHover: chartHover,
             plugins: {
-                legend: { position: 'bottom' },
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
+                },
                 tooltip: Object.assign(chartTooltip(), {
                     callbacks: {
                         label: function(ctx) {
@@ -684,6 +688,9 @@ if (isset($category_rows)) {
                     ticks: { display: false },
                     grid: { color: gridColor }
                 }
+            },
+            layout: {
+                padding: 4
             }
         }
     });

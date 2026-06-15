@@ -1,13 +1,12 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
-require_once dirname(__DIR__, 2) . '/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/bootstrap-api.php';
 
-if (!isLoggedIn()) {
-    echo json_encode(array('success' => false, 'message' => 'Please sign in.'));
-    exit;
-}
-
-require_valid_csrf();
+secure_json_api(array(
+    'methods' => array('POST'),
+    'login' => true,
+    'csrf' => true,
+    'rate_limit' => array('action' => 'follow_api', 'id' => client_rate_limit_id(), 'max' => 40, 'window' => 300),
+));
 
 $action = '';
 if (isset($_POST['action'])) {
@@ -21,6 +20,11 @@ if (isset($_POST['user_id'])) {
 
 if ($user_id <= 0) {
     echo json_encode(array('success' => false, 'message' => 'Invalid user.'));
+    exit;
+}
+
+if (!user_can_be_followed($pdo, $user_id)) {
+    echo json_encode(array('success' => false, 'message' => 'This member is not available.'));
     exit;
 }
 

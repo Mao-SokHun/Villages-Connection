@@ -1,35 +1,57 @@
-name: DevOps with PHP project
+name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
 
 jobs:
-  build:
-    runs-on: self-hosted
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: project_cms
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d project_cms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull Latest Code
-        shell: powershell
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql, pgsql, curl
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Configure environment
         run: |
-          Set-Location "D:\Programming in University\PHP\Project\Viilages_Connection"
+          cp .env.example .env
+          {
+            echo "DB_HOST=127.0.0.1"
+            echo "DB_PORT=5432"
+            echo "DB_DATABASE=project_cms"
+            echo "DB_USERNAME=postgres"
+            echo "DB_PASSWORD=postgres"
+            echo "APP_DEBUG=true"
+          } >> .env
 
-          git pull origin main
+      - name: Run migrations
+        run: php database/migrate.php
 
-      - name: Build Containers
-        run: docker compose up -d --build
-
-      - name: Install Composer Dependencies
-        run: docker compose exec -T app composer install --no-interaction --prefer-dist
-
-      - name: Run Migrations
-        run: docker compose exec -T app php artisan migrate --force
-
-      - name: Clear Cache
-        run: docker compose exec -T app php artisan optimize:clear
-
-      - name: Verify Laravel
-        run: docker compose exec -T app php artisan --version
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit

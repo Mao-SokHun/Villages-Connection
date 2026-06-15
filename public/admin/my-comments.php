@@ -17,6 +17,26 @@ if ($admin_post && $admin_post['action'] == 'delete' && $admin_post['id'] > 0) {
     header('Location: my-comments.php');
     exit;
 }
+if ($admin_post && $admin_post['action'] == 'approve' && $admin_post['id'] > 0) {
+    $result = moderate_post_owner_comment($pdo, $admin_post['id'], 'approved');
+    if ($result['ok']) {
+        setFlashMessage('success', 'Comment approved.');
+    } else {
+        setFlashMessage('danger', $result['error']);
+    }
+    header('Location: my-comments.php');
+    exit;
+}
+if ($admin_post && $admin_post['action'] == 'reject' && $admin_post['id'] > 0) {
+    $result = moderate_post_owner_comment($pdo, $admin_post['id'], 'rejected');
+    if ($result['ok']) {
+        setFlashMessage('info', 'Comment rejected.');
+    } else {
+        setFlashMessage('danger', $result['error']);
+    }
+    header('Location: my-comments.php');
+    exit;
+}
 
 $filter = '';
 if (isset($_GET['status']) && $_GET['status'] != '') {
@@ -114,7 +134,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                 <td class="small table-cell-strong"><?php echo htmlspecialchars($c['author_name']); ?></td>
                 <td class="small" style="max-width:280px"><?php echo htmlspecialchars($c['content']); ?></td>
                 <td class="small">
-                    <a href="../post.php?slug=<?php echo urlencode($c['post_slug']); ?>#comments" class="footer-link" target="_blank">
+                    <a href="<?php echo htmlspecialchars(post_url($c['post_slug'], '../') . '#comments'); ?>" class="footer-link" target="_blank">
                         <?php echo htmlspecialchars(excerpt($c['post_title'], 36)); ?>
                     </a>
                 </td>
@@ -125,7 +145,11 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                 </td>
                 <td class="small table-cell-muted"><?php echo khmer_date($c['created_at']); ?></td>
                 <td class="text-end text-nowrap">
-                    <a href="../post.php?slug=<?php echo urlencode($c['post_slug']); ?>#comments" class="btn btn-sm btn-outline-custom" target="_blank" title="View on post"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                    <a href="<?php echo htmlspecialchars(post_url($c['post_slug'], '../') . '#comments'); ?>" class="btn btn-sm btn-outline-custom" target="_blank" title="View on post"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                    <?php if ($c['status'] == 'pending'): ?>
+                    <?php render_admin_action_button('my-comments.php', 'approve', $c['id'], array('class' => 'btn btn-sm btn-outline-custom text-success', 'icon' => 'fa-solid fa-check', 'title' => 'Approve comment')); ?>
+                    <?php render_admin_action_button('my-comments.php', 'reject', $c['id'], array('class' => 'btn btn-sm btn-outline-custom text-warning', 'icon' => 'fa-solid fa-ban', 'title' => 'Reject comment')); ?>
+                    <?php endif; ?>
                     <?php render_admin_action_button('my-comments.php', 'delete', $c['id'], array('class' => 'btn btn-sm btn-outline-custom text-danger', 'icon' => 'fa-solid fa-trash', 'title' => 'Remove comment', 'confirm' => 'Remove this comment from your post?')); ?>
                 </td>
             </tr>

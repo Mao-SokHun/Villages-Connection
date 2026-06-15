@@ -31,19 +31,29 @@ Change these before any public deployment.
 
 ## Environment (`.env`)
 
+Copy `.env.example` to `.env` and adjust values:
+
+```bash
+cp .env.example .env
+```
+
+Core variables: `DB_*`, `APP_URL`, `APP_DEBUG`, `MAIL_*`, `SITE_CONTACT_EMAIL`.  
+Optional: `GOOGLE_*`, `FACEBOOK_*`, `OAUTH_BASE_URL`, `CLOUDINARY_*` — see `.env.example` for the full list.
+
 ```env
 DB_HOST=db
 DB_PORT=5432
 DB_DATABASE=project_cms
 DB_USERNAME=postgres
-DB_PASSWORD=4944
+DB_PASSWORD=change_me
 APP_URL=http://localhost:8080
 APP_DEBUG=true
 MAIL_HOST=mailpit
 MAIL_PORT=1025
-MAIL_FROM=noreply@villagenews.local
+MAIL_ENCRYPTION=none
+MAIL_FROM=noreply@example.com
 MAIL_FROM_NAME=Village Connect
-SITE_CONTACT_EMAIL=admin@admin.com
+SITE_CONTACT_EMAIL=admin@example.com
 ```
 
 ## Database Migrations
@@ -80,6 +90,10 @@ tests/           PHPUnit tests
 - Author dashboard and admin panel (moderation, analytics, settings)
 - SEO: sitemap, meta tags, JSON-LD, clean URLs `/post/{slug}`
 - Security: CSRF, session hardening, POST admin actions, upload permissions
+
+## Guides
+
+- **[YouTube Video Guide](docs/YOUTUBE-GUIDE.md)** — How to add a YouTube link so thumbnails and video display on posts (feed, profile, post page)
 
 ## Tests
 

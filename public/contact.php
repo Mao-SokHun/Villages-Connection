@@ -15,6 +15,7 @@ $subject = '';
 $message = '';
 $errors = array();
 $sent = false;
+$sent_message_id = 0;
 
 if (isLoggedIn()) {
     $name = $_SESSION['user_name'];
@@ -23,6 +24,11 @@ if (isLoggedIn()) {
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
+
+    $limit_id = client_rate_limit_id();
+    if (!rate_limit_hit('contact_form', $limit_id, 5, 3600)) {
+        $errors[] = rate_limit_blocked_response('contact_form', $limit_id, 3600, false);
+    }
 
     if (isset($_POST['name'])) {
         $name = trim($_POST['name']);
@@ -51,16 +57,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (count($errors) == 0) {
-        save_contact_message($pdo, $name, $email, $subject, $message);
-        if (send_contact_email($name, $email, $subject, $message)) {
-            $sent = true;
-            $name = '';
-            $email = isLoggedIn() ? $_SESSION['user_email'] : '';
-            $subject = '';
-            $message = '';
-        } else {
-            $errors[] = 'Could not send your message right now. Please try again later.';
+        $contact_user_id = 0;
+        if (isLoggedIn()) {
+            $contact_user_id = (int) $_SESSION['user_id'];
         }
+
+        $message_id = save_contact_message($pdo, $name, $email, $subject, $message, $contact_user_id);
+        send_contact_email($name, $email, $subject, $message);
+        if ($contact_user_id > 0) {
+            notify_user_contact_submitted($pdo, $message_id, $contact_user_id, $subject);
+        }
+        $sent = true;
+        $sent_message_id = $message_id;
+        if ($contact_user_id > 0) {
+            setFlashMessage('success', 'Your message was sent. Check the notification bell or Support Messages for our reply.');
+        } else {
+            setFlashMessage('success', 'Your message was sent. Sign in to get replies in your notification bell, or we will email you.');
+        }
+        $name = '';
+        $email = isLoggedIn() ? $_SESSION['user_email'] : '';
+        $subject = '';
+        $message = '';
     }
 }
 

@@ -1,5 +1,19 @@
 <?php
 
+function is_remote_media_url($value)
+{
+    if ($value == '' || $value == null) {
+        return false;
+    }
+
+    return strpos($value, 'http://') === 0 || strpos($value, 'https://') === 0;
+}
+
+function is_cloudinary_url($url)
+{
+    return is_remote_media_url($url) && strpos($url, 'res.cloudinary.com') !== false;
+}
+
 function upload_path($subdir)
 {
     $base = PUBLIC_PATH . '/uploads/';
@@ -21,11 +35,58 @@ function media_url($file, $subdir)
         return '';
     }
 
+    if (is_remote_media_url($file)) {
+        return $file;
+    }
+
     if ($subdir != '') {
         return 'uploads/' . trim($subdir, '/') . '/' . $file;
     }
 
     return 'uploads/' . $file;
+}
+
+function public_asset_url($path)
+{
+    if ($path == '' || $path == null) {
+        return '';
+    }
+
+    if (is_remote_media_url($path)) {
+        return $path;
+    }
+
+    return '/' . ltrim($path, '/');
+}
+
+function resolve_media_src($file, $subdir = '')
+{
+    if ($file == '' || $file == null) {
+        return '';
+    }
+
+    if (is_remote_media_url($file)) {
+        return $file;
+    }
+
+    return public_asset_url(media_url($file, $subdir));
+}
+
+function post_media_available($stored_value, $subdir = '')
+{
+    if ($stored_value == '' || $stored_value == null) {
+        return false;
+    }
+
+    if (is_remote_media_url($stored_value)) {
+        return true;
+    }
+
+    if ($subdir == 'videos') {
+        return is_file(upload_path('videos') . $stored_value);
+    }
+
+    return is_file(upload_path('') . $stored_value);
 }
 
 function slugify($text)
@@ -41,9 +102,28 @@ function slugify($text)
     return $text;
 }
 
+function ensure_cloudinary_loaded()
+{
+    static $loaded = false;
+    if (!$loaded) {
+        require_once APP_PATH . '/Core/cloudinary.php';
+        $loaded = true;
+    }
+}
+
 function delete_upload($filename, $subdir)
 {
     if ($filename == '' || $filename == null) {
+        return;
+    }
+
+    if (strpos($filename, 'res.cloudinary.com') !== false) {
+        ensure_cloudinary_loaded();
+        $resource_type = 'image';
+        if ($subdir == 'videos' || strpos($filename, '/video/upload/') !== false) {
+            $resource_type = 'video';
+        }
+        cloudinary_destroy($filename, $resource_type);
         return;
     }
 
@@ -64,15 +144,29 @@ function handle_image_upload($file, $existing)
         return $result;
     }
 
-    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $allowed = array('jpg', 'jpeg', 'png', 'webp', 'gif');
-
-    if (!in_array($ext, $allowed)) {
-        $result['error'] = 'Image must be JPG, PNG, WEBP, or GIF';
+    $check = validate_uploaded_image_file($file, upload_max_image_bytes(), 'Image');
+    if ($check['ok'] == false) {
+        $result['error'] = $check['error'];
         return $result;
     }
 
-    $name = time() . '_' . slugify(pathinfo($file['name'], PATHINFO_FILENAME)) . '.' . $ext;
+    $ext = $check['extension'];
+    $name = upload_secure_filename($ext);
+
+    ensure_cloudinary_loaded();
+    if (cloudinary_enabled()) {
+        $uploaded = cloudinary_upload_file($file['tmp_name'], 'image', 'posts');
+        if ($uploaded['ok'] == false) {
+            $result['error'] = $uploaded['error'];
+            return $result;
+        }
+        if ($existing != '') {
+            delete_upload($existing, '');
+        }
+        $result['ok'] = true;
+        $result['filename'] = $uploaded['filename'];
+        return $result;
+    }
 
     if (move_uploaded_file($file['tmp_name'], upload_path('') . $name)) {
         if ($existing != '') {
@@ -97,20 +191,29 @@ function handle_video_upload($file, $existing)
         return $result;
     }
 
-    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $allowed = array('mp4', 'webm', 'mov');
-
-    if (!in_array($ext, $allowed)) {
-        $result['error'] = 'Video must be MP4, WEBM, or MOV';
+    $check = validate_uploaded_video_file($file, upload_max_video_bytes(), 'Video');
+    if ($check['ok'] == false) {
+        $result['error'] = $check['error'];
         return $result;
     }
 
-    if ($file['size'] > 50 * 1024 * 1024) {
-        $result['error'] = 'Video cannot exceed 50MB';
+    $ext = $check['extension'];
+    $name = upload_secure_filename($ext);
+
+    ensure_cloudinary_loaded();
+    if (cloudinary_enabled()) {
+        $uploaded = cloudinary_upload_file($file['tmp_name'], 'video', 'videos');
+        if ($uploaded['ok'] == false) {
+            $result['error'] = $uploaded['error'];
+            return $result;
+        }
+        if ($existing != '') {
+            delete_upload($existing, 'videos');
+        }
+        $result['ok'] = true;
+        $result['filename'] = $uploaded['filename'];
         return $result;
     }
-
-    $name = time() . '_' . slugify(pathinfo($file['name'], PATHINFO_FILENAME)) . '.' . $ext;
 
     if (move_uploaded_file($file['tmp_name'], upload_path('videos') . $name)) {
         if ($existing != '') {
@@ -183,23 +286,88 @@ function parse_video_input($video_type, $youtube_url, $file, $existing_url, $exi
     return array('ok' => true, 'type' => 'none', 'url' => '');
 }
 
-function youtube_embed_url($url)
+function youtube_video_id($url)
 {
-    $id = '';
+    if ($url == '') {
+        return '';
+    }
 
     if (preg_match('/youtu\.be\/([^\?&]+)/', $url, $m)) {
-        $id = $m[1];
-    } elseif (preg_match('/[?&]v=([^&]+)/', $url, $m)) {
-        $id = $m[1];
-    } elseif (preg_match('/embed\/([^?&]+)/', $url, $m)) {
-        $id = $m[1];
+        return $m[1];
     }
+    if (preg_match('/[?&]v=([^&]+)/', $url, $m)) {
+        return $m[1];
+    }
+    if (preg_match('/embed\/([^?&]+)/', $url, $m)) {
+        return $m[1];
+    }
+
+    return '';
+}
+
+function youtube_embed_url($url)
+{
+    $id = youtube_video_id($url);
 
     if ($id == '') {
         return '';
     }
 
     return 'https://www.youtube.com/embed/' . $id;
+}
+
+function youtube_thumbnail_url($url)
+{
+    $id = youtube_video_id($url);
+
+    if ($id == '') {
+        return '';
+    }
+
+    return 'https://img.youtube.com/vi/' . $id . '/hqdefault.jpg';
+}
+
+function post_uploaded_image_exists($image_url)
+{
+    return post_media_available($image_url, '');
+}
+
+function post_card_media($post)
+{
+    $result = array('url' => '', 'external' => false, 'alt' => '');
+
+    if (!empty($post['image_url']) && post_media_available($post['image_url'], '')) {
+        $result['url'] = resolve_media_src($post['image_url'], '');
+        $result['alt'] = post_image_alt($post, isset($post['title']) ? $post['title'] : '');
+        return $result;
+    }
+
+    if (isset($post['video_type']) && $post['video_type'] == 'youtube' && !empty($post['video_url'])) {
+        $thumb = youtube_thumbnail_url($post['video_url']);
+        if ($thumb != '') {
+            $result['url'] = $thumb;
+            $result['external'] = true;
+            $result['alt'] = isset($post['title']) ? $post['title'] : 'Video thumbnail';
+            return $result;
+        }
+    }
+
+    return $result;
+}
+
+function render_sidebar_post_thumb($post)
+{
+    $media = post_card_media($post);
+    if ($media['url'] != '') {
+        return '<img src="' . htmlspecialchars($media['url']) . '" alt="' . htmlspecialchars($media['alt']) . '" class="sidebar-post-thumb" loading="lazy">';
+    }
+
+    $icon = 'fa-image';
+    if (isset($post['category_icon']) && $post['category_icon'] != '') {
+        $icon = $post['category_icon'];
+    }
+
+    return '<div class="sidebar-post-thumb sidebar-post-thumb-placeholder">' . render_category_icon($icon, '') . '</div>';
 }
 
 function visitor_key()
@@ -306,20 +474,14 @@ function handle_avatar_upload($file, $existing)
         return $result;
     }
 
-    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $allowed = array('jpg', 'jpeg', 'png', 'webp', 'gif');
-
-    if (!in_array($ext, $allowed)) {
-        $result['error'] = 'Avatar must be JPG, PNG, WEBP, or GIF';
+    $check = validate_uploaded_image_file($file, upload_max_avatar_bytes(), 'Avatar');
+    if ($check['ok'] == false) {
+        $result['error'] = $check['error'];
         return $result;
     }
 
-    if ($file['size'] > 2 * 1024 * 1024) {
-        $result['error'] = 'Avatar cannot exceed 2MB';
-        return $result;
-    }
-
-    $name = time() . '_' . slugify(pathinfo($file['name'], PATHINFO_FILENAME)) . '.' . $ext;
+    $ext = $check['extension'];
+    $name = upload_secure_filename($ext);
 
     if (move_uploaded_file($file['tmp_name'], upload_path('avatars') . $name)) {
         if ($existing != '') {
@@ -350,6 +512,7 @@ function is_external_avatar($avatar)
 
 function user_avatar_exists($avatar)
 {
+    $avatar = normalize_avatar_filename($avatar);
     if ($avatar == '' || $avatar == null) {
         return false;
     }
@@ -366,20 +529,296 @@ function user_avatar_exists($avatar)
     return false;
 }
 
-function render_user_avatar($name, $avatar, $extra_class)
+function gravatar_url($email, $size)
+{
+    $email = strtolower(trim($email));
+    if ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return '';
+    }
+
+    if (strpos($email, '@oauth.local') !== false) {
+        return '';
+    }
+
+    $hash = md5($email);
+    $size = (int) $size;
+    if ($size < 16) {
+        $size = 16;
+    }
+    if ($size > 512) {
+        $size = 512;
+    }
+
+    return 'https://www.gravatar.com/avatar/' . $hash . '?s=' . $size . '&d=identicon';
+}
+
+function resolve_user_avatar_src($avatar, $email, $size)
+{
+    $avatar = normalize_avatar_filename($avatar);
+    if (user_avatar_exists($avatar)) {
+        if (is_external_avatar($avatar)) {
+            return $avatar;
+        }
+
+        return public_asset_url(media_url($avatar, 'avatars'));
+    }
+
+    return gravatar_url($email, $size);
+}
+
+function is_oauth_user($user)
+{
+    if (!is_array($user)) {
+        return false;
+    }
+    if (!isset($user['oauth_provider'])) {
+        return false;
+    }
+
+    $provider = trim($user['oauth_provider']);
+    return $provider != '' && $provider != 'local';
+}
+
+function is_placeholder_oauth_email($email)
+{
+    $email = strtolower(trim((string) $email));
+    if ($email == '') {
+        return true;
+    }
+
+    if (strpos($email, '@oauth.local') !== false) {
+        return true;
+    }
+
+    if (preg_match('/^(facebook|google)_[0-9]+$/', $email)) {
+        return true;
+    }
+
+    return false;
+}
+
+function infer_oauth_provider_from_email($email)
+{
+    $email = strtolower(trim((string) $email));
+    if ($email == '') {
+        return '';
+    }
+
+    if (strpos($email, 'facebook_') === 0) {
+        return 'facebook';
+    }
+
+    if (strpos($email, 'google_') === 0) {
+        return 'google';
+    }
+
+    return '';
+}
+
+function resolve_oauth_provider($user)
+{
+    if (!is_array($user)) {
+        return '';
+    }
+
+    if (isset($user['oauth_provider'])) {
+        $provider = strtolower(trim((string) $user['oauth_provider']));
+        if ($provider != '' && $provider != 'local') {
+            return $provider;
+        }
+    }
+
+    if (isset($user['email'])) {
+        return infer_oauth_provider_from_email($user['email']);
+    }
+
+    return '';
+}
+
+function user_has_managed_email($user)
+{
+    if (!is_array($user) || !isset($user['email'])) {
+        return false;
+    }
+
+    return is_placeholder_oauth_email($user['email']);
+}
+
+function oauth_provider_label($provider)
+{
+    $provider = strtolower(trim((string) $provider));
+    if ($provider == 'facebook') {
+        return 'Facebook';
+    }
+    if ($provider == 'google') {
+        return 'Google';
+    }
+    if ($provider == '') {
+        return 'Social account';
+    }
+
+    return ucfirst($provider);
+}
+
+function user_public_email($user)
+{
+    if (!is_array($user)) {
+        return '';
+    }
+
+    $email = '';
+    if (isset($user['email'])) {
+        $email = trim($user['email']);
+    }
+
+    if ($email == '' || is_placeholder_oauth_email($email)) {
+        return '';
+    }
+
+    return $email;
+}
+
+function user_account_subtitle($user)
+{
+    if (!is_array($user)) {
+        return '';
+    }
+
+    $public_email = user_public_email($user);
+    if ($public_email != '') {
+        return $public_email;
+    }
+
+    if (is_oauth_user($user) || user_has_managed_email($user)) {
+        $provider = resolve_oauth_provider($user);
+        if ($provider == '') {
+            $provider = 'social';
+        }
+
+        return 'Signed in with ' . oauth_provider_label($provider);
+    }
+
+    return '';
+}
+
+function normalize_avatar_filename($avatar)
+{
+    $avatar = trim((string) $avatar);
+    if ($avatar == '') {
+        return '';
+    }
+
+    if (is_external_avatar($avatar)) {
+        return $avatar;
+    }
+
+    if (strpos($avatar, 'uploads/avatars/') !== false) {
+        return basename($avatar);
+    }
+
+    if (strpos($avatar, 'uploads/') === 0) {
+        return basename($avatar);
+    }
+
+    return $avatar;
+}
+
+function asset_version($relative_path)
+{
+    $file = PUBLIC_PATH . '/' . ltrim($relative_path, '/');
+    if (file_exists($file)) {
+        return (string) filemtime($file);
+    }
+
+    return '1';
+}
+
+function nav_category_list($pdo)
+{
+    static $cache = null;
+    static $cached_at = 0;
+
+    if (is_array($cache) && (time() - $cached_at) < 300) {
+        return $cache;
+    }
+
+    $rows = $pdo->query('SELECT name, slug, icon FROM categories ORDER BY name ASC')->fetchAll();
+    $cache = $rows;
+    $cached_at = time();
+
+    return $rows;
+}
+
+function clear_nav_category_cache()
+{
+    // Kept for admin category updates; request cache resets each HTTP request.
+}
+
+function site_contact_email()
+{
+    if (function_exists('get_setting')) {
+        $email = trim(get_setting('site_contact_email', SITE_CONTACT_EMAIL));
+        if ($email != '') {
+            return $email;
+        }
+    }
+
+    $mail_from = getenv('MAIL_FROM');
+    if ($mail_from != false && trim($mail_from) != '') {
+        return trim($mail_from);
+    }
+
+    return SITE_CONTACT_EMAIL;
+}
+
+function site_default_meta_description()
+{
+    if (function_exists('get_setting')) {
+        $desc = trim(get_setting('default_meta_description', SITE_DESC));
+        if ($desc != '') {
+            return $desc;
+        }
+    }
+
+    return SITE_DESC;
+}
+
+function email_template($key, $defaults, $replacements = array())
+{
+    $subject = $defaults['subject'];
+    $body = $defaults['body'];
+
+    if (function_exists('get_setting')) {
+        $saved_subject = trim(get_setting($key . '_subject', ''));
+        $saved_body = trim(get_setting($key . '_body', ''));
+        if ($saved_subject != '') {
+            $subject = $saved_subject;
+        }
+        if ($saved_body != '') {
+            $body = $saved_body;
+        }
+    }
+
+    foreach ($replacements as $token => $value) {
+        $subject = str_replace('{' . $token . '}', $value, $subject);
+        $body = str_replace('{' . $token . '}', $value, $body);
+    }
+
+    return array('subject' => $subject, 'body' => $body);
+}
+
+function render_user_avatar($name, $avatar, $extra_class, $email = '')
 {
     $class = 'user-avatar';
     if ($extra_class != '') {
         $class = $class . ' ' . $extra_class;
     }
 
-    if (user_avatar_exists($avatar)) {
-        $src = media_url($avatar, 'avatars');
-        if (is_external_avatar($avatar)) {
-            $src = $avatar;
-        }
+    $src = resolve_user_avatar_src($avatar, $email, 96);
+    if ($src != '') {
+        $initials = user_initials($name);
         $html = '<span class="' . $class . ' user-avatar-img-wrap">';
-        $html = $html . '<img src="' . htmlspecialchars($src) . '" alt="' . htmlspecialchars($name) . '">';
+        $html = $html . '<img src="' . htmlspecialchars($src) . '" alt="' . htmlspecialchars($name) . '" loading="lazy" onerror="this.remove();this.parentElement.classList.remove(\'user-avatar-img-wrap\');this.parentElement.textContent=' . json_encode($initials) . ';">';
         $html = $html . '</span>';
         return $html;
     }
@@ -409,6 +848,12 @@ function refresh_user_session($pdo, $user_id)
     if (isset($user['avatar'])) {
         $_SESSION['user_avatar'] = $user['avatar'];
     }
+    $_SESSION['oauth_provider'] = 'local';
+    if (isset($user['oauth_provider']) && $user['oauth_provider'] != '') {
+        $_SESSION['oauth_provider'] = $user['oauth_provider'];
+    }
+    $_SESSION['account_status'] = user_account_status($user);
+    $_SESSION['is_banned'] = user_is_banned($user);
 
     return true;
 }
@@ -486,7 +931,7 @@ function mark_otp_used($pdo, $otp_id)
 
 function admin_count($pdo)
 {
-    $sql = "SELECT COUNT(*) FROM users WHERE role = 'admin'";
+    $sql = "SELECT COUNT(*) FROM users WHERE role = 'admin' AND COALESCE(account_status, 'active') != 'deleted'";
     return (int) $pdo->query($sql)->fetchColumn();
 }
 
@@ -749,34 +1194,45 @@ function delete_user_account($pdo, $user_id)
         return false;
     }
 
-    if (isset($user['avatar']) && $user['avatar'] != '') {
-        delete_upload($user['avatar'], 'avatars');
+    if (user_is_deleted($user)) {
+        return false;
     }
 
-    $sql = 'DELETE FROM users WHERE id = :id';
+    $sql = "UPDATE users SET account_status = 'deleted', deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = :id";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(array('id' => $user_id));
+    $stmt->execute(array('id' => (int) $user_id));
 
-    return true;
+    if ($stmt->rowCount() > 0) {
+        log_activity($pdo, 'user.deleted', 'User #' . (int) $user_id);
+        return true;
+    }
+
+    return false;
 }
 
-function site_base_url()
+function request_scheme()
 {
-    if (defined('APP_URL') && APP_URL != '') {
-        return rtrim(APP_URL, '/');
-    }
-
     $scheme = 'http';
     if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') {
         $scheme = 'https';
     }
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+        $scheme = 'https';
+    }
+    return $scheme;
+}
 
-    $host = 'localhost';
+function site_base_url()
+{
     if (isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] != '') {
-        $host = $_SERVER['HTTP_HOST'];
+        return request_scheme() . '://' . $_SERVER['HTTP_HOST'];
     }
 
-    return $scheme . '://' . $host;
+    if (defined('APP_URL') && APP_URL != '') {
+        return rtrim(APP_URL, '/');
+    }
+
+    return 'http://localhost:8080';
 }
 
 function current_page_url()
@@ -812,20 +1268,6 @@ function render_breadcrumb($items, $base_path = '')
     }
 
     echo '</ol></nav>';
-}
-
-function create_post_url($base_path = '')
-{
-    if (isLoggedIn()) {
-        return $base_path . 'admin/posts.php?action=add';
-    }
-
-    return $base_path . 'register.php';
-}
-
-function post_url($slug, $base_path = '')
-{
-    return $base_path . 'post/' . rawurlencode($slug);
 }
 
 function post_image_alt($post, $fallback = '')
@@ -878,8 +1320,11 @@ function render_post_content($content)
 function render_json_ld_article($post, $author_name, $canonical_url)
 {
     $image = '';
-    if (!empty($post['image_url']) && file_exists(PUBLIC_PATH . '/uploads/' . $post['image_url'])) {
-        $image = site_base_url() . '/' . media_url($post['image_url'], '');
+    if (!empty($post['image_url']) && post_media_available($post['image_url'], '')) {
+        $image = resolve_media_src($post['image_url'], '');
+        if (!is_remote_media_url($image)) {
+            $image = site_base_url() . $image;
+        }
     }
     $data = array(
         '@context' => 'https://schema.org',

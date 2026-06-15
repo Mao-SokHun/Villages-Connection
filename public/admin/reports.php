@@ -47,6 +47,14 @@ if (isset($_GET['status']) && $_GET['status'] != '') {
     $filter = trim($_GET['status']);
 }
 
+if (isset($_GET['export']) && $_GET['export'] == 'csv') {
+    $export_status = $filter;
+    if ($export_status != 'open' && $export_status != 'resolved') {
+        $export_status = 'all';
+    }
+    analytics_export_reports($pdo, $export_status);
+}
+
 $list_where = ' WHERE 1=1';
 $list_params = array();
 if ($filter == 'open' || $filter == 'resolved') {
@@ -75,6 +83,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h3 class="text-white mb-0"><i class="fa-solid fa-flag text-danger me-2"></i>Content Reports</h3>
         <div class="d-flex gap-2">
+            <a href="reports.php?export=csv&amp;status=<?php echo htmlspecialchars($filter); ?>" class="btn btn-sm btn-outline-custom"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
             <a href="reports.php?status=open" class="btn btn-sm <?php echo $filter == 'open' ? 'btn-gradient' : 'btn-outline-custom'; ?>">Open</a>
             <a href="reports.php?status=resolved" class="btn btn-sm <?php echo $filter == 'resolved' ? 'btn-gradient' : 'btn-outline-custom'; ?>">Resolved</a>
             <a href="reports.php?status=all" class="btn btn-sm <?php echo $filter == 'all' ? 'btn-gradient' : 'btn-outline-custom'; ?>">All</a>

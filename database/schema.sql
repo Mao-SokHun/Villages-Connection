@@ -18,6 +18,9 @@ CREATE TABLE users (
     is_banned BOOLEAN NOT NULL DEFAULT FALSE,
     banned_reason TEXT DEFAULT '',
     banned_at TIMESTAMP,
+    account_status VARCHAR(20) NOT NULL DEFAULT 'active',
+    deleted_at TIMESTAMP,
+    email_verified_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -40,7 +43,7 @@ CREATE TABLE posts (
     slug VARCHAR(200) UNIQUE NOT NULL,
     summary TEXT,
     content TEXT NOT NULL,
-    image_url VARCHAR(255),
+    image_url VARCHAR(500),
     video_url VARCHAR(500),
     video_type VARCHAR(20) NOT NULL DEFAULT 'none',
     location VARCHAR(150),
@@ -66,9 +69,19 @@ CREATE TABLE password_reset_otps (
 CREATE TABLE post_likes (
     id SERIAL PRIMARY KEY,
     post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-    visitor_key VARCHAR(64) NOT NULL,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    visitor_key VARCHAR(64) DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(post_id, visitor_key)
+    UNIQUE(post_id, user_id)
+);
+
+CREATE TABLE email_verification_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE site_settings (
@@ -129,8 +142,17 @@ CREATE TABLE post_comments (
     author_name VARCHAR(100) NOT NULL DEFAULT '',
     content TEXT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    parent_id INT REFERENCES post_comments(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE post_bookmarks (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, post_id)
 );
 
 CREATE TABLE user_follows (

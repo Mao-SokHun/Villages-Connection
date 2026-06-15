@@ -37,6 +37,11 @@ $reason_options = array(
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
 
+    $limit_id = client_rate_limit_id();
+    if (!rate_limit_hit('content_report', $limit_id, 5, 3600)) {
+        $errors[] = rate_limit_blocked_response('content_report', $limit_id, 3600, false);
+    }
+
     if (isset($_POST['name'])) {
         $name = trim($_POST['name']);
     }
@@ -67,15 +72,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (count($errors) == 0) {
-        save_content_report($pdo, $name, $email, $reason, $post_url, $details);
-        if (send_report_email($name, $email, $reason, $post_url, $details)) {
-            $sent = true;
-            $reason = '';
-            $post_url = '';
-            $details = '';
-        } else {
-            $errors[] = 'Could not submit your report right now. Please try again later.';
+        $report_user_id = 0;
+        if (isLoggedIn()) {
+            $report_user_id = (int) $_SESSION['user_id'];
         }
+
+        save_content_report($pdo, $name, $email, $reason, $post_url, $details, $report_user_id);
+        send_report_email($name, $email, $reason, $post_url, $details);
+        $sent = true;
+        setFlashMessage('success', 'Your report was submitted. Admins will review it soon.');
+        $reason = '';
+        $post_url = '';
+        $details = '';
     }
 }
 
