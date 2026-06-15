@@ -63,7 +63,7 @@ if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="dark light">
-    <title><?php echo isset($page_title) ? $page_title . ' - ' . SITE_NAME : SITE_NAME . ' | ' . SITE_TAGLINE; ?></title>
+    <title><?php echo htmlspecialchars(isset($page_title) ? $page_title . ' - ' . SITE_NAME : SITE_NAME . ' | ' . SITE_TAGLINE, ENT_QUOTES, 'UTF-8'); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($page_description); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($canonical_url); ?>">
     <meta property="og:type" content="website">
@@ -376,7 +376,10 @@ if ($site_announcement):
                 <span><?php echo htmlspecialchars($site_announcement['message']); ?></span>
             </div>
             <?php if ($site_announcement['link_url'] != ''): ?>
-            <a href="<?php echo htmlspecialchars($site_announcement['link_url']); ?>" class="site-announcement-link">Learn more</a>
+            <?php $announcement_href = safe_http_href($site_announcement['link_url']); ?>
+            <?php if ($announcement_href != ''): ?>
+            <a href="<?php echo htmlspecialchars($announcement_href); ?>" class="site-announcement-link">Learn more</a>
+            <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>

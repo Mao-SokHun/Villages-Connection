@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
 
     if (isset($_POST['name'])) {
-        $name = trim($_POST['name']);
+        $name = sanitize_plain_text_field($_POST['name'], 80);
     }
     if ($email_is_managed) {
         $email = $user['email'];

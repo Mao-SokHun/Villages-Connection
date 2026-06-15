@@ -49,4 +49,18 @@ class SecurityTest extends TestCase
 
         $this->assertSame('', hsts_header_value());
     }
+
+    public function testSafeRedirectPathBlocksExternalUrls()
+    {
+        $this->assertFalse(is_safe_redirect_path('//evil.com'));
+        $this->assertFalse(is_safe_redirect_path('https://evil.com'));
+        $this->assertFalse(is_safe_redirect_path('javascript:alert(1)'));
+        $this->assertTrue(is_safe_redirect_path('notifications.php'));
+        $this->assertTrue(is_safe_redirect_path('post.php?slug=hello'));
+    }
+
+    public function testSanitizePlainTextFieldStripsTags()
+    {
+        $this->assertSame('alert(1)', sanitize_plain_text_field('<script>alert(1)</script>', 80));
+    }
 }

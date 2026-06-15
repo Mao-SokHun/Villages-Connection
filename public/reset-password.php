@@ -16,6 +16,12 @@ if (isset($_SESSION['reset_email'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
 
+    $email_key = 'email:guest';
+    if (isset($_POST['email'])) {
+        $email_key = 'email:' . strtolower(trim($_POST['email']));
+    }
+    enforce_rate_limit_or_exit('reset_otp_verify', client_rate_limit_id() . '|' . $email_key, 5, 900, false);
+
     if (isset($_POST['email'])) {
         $email = trim($_POST['email']);
     }

@@ -131,7 +131,8 @@ try {
             GROUP BY COALESCE(c.name, 'Uncategorized') ORDER BY total DESC LIMIT 6")->fetchAll();
     }
 } catch (PDOException $e) {
-    die('Database query error: ' . $e->getMessage());
+    app_log_error('Admin dashboard query failed: ' . $e->getMessage());
+    die(app_public_error_message('Database query error.'));
 }
 
 $avg_views = 0;

@@ -85,6 +85,88 @@ function csrf_field()
     return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token()) . '">';
 }
 
+function is_safe_redirect_path($path)
+{
+    $path = trim((string) $path);
+    if ($path == '' || $path == '/') {
+        return false;
+    }
+    if (preg_match('/[\r\n\x00]/', $path)) {
+        return false;
+    }
+    if (strpos($path, ':') !== false) {
+        return false;
+    }
+    if (strpos($path, '//') === 0) {
+        return false;
+    }
+    if (strpos($path, '\\') !== false) {
+        return false;
+    }
+    if (strpos($path, '..') !== false) {
+        return false;
+    }
+
+    return true;
+}
+
+function safe_redirect_path($path, $default = 'index.php')
+{
+    if (is_safe_redirect_path($path)) {
+        return $path;
+    }
+
+    return $default;
+}
+
+function safe_http_href($url)
+{
+    $url = trim((string) $url);
+    if ($url == '') {
+        return '';
+    }
+
+    if (is_safe_redirect_path($url)) {
+        return app_url($url);
+    }
+
+    if (preg_match('#^https://#i', $url)) {
+        return $url;
+    }
+
+    return '';
+}
+
+function sanitize_plain_text_field($value, $max_length = 120)
+{
+    $value = trim((string) $value);
+    $value = strip_tags($value);
+    $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($value) > (int) $max_length) {
+            $value = mb_substr($value, 0, (int) $max_length);
+        }
+    } elseif (strlen($value) > (int) $max_length) {
+        $value = substr($value, 0, (int) $max_length);
+    }
+
+    return $value;
+}
+
+function app_log_error($message)
+{
+    error_log('[VillageConnect] ' . $message);
+}
+
+function app_public_error_message($fallback = 'A server error occurred. Please try again later.')
+{
+    if (defined('APP_DEBUG') && APP_DEBUG) {
+        return $fallback;
+    }
+
+    return 'A server error occurred. Please try again later.';
+}
+
 function verify_csrf_token()
 {
     $token = '';

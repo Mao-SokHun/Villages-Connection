@@ -13,13 +13,7 @@ if (!in_array($lang, supported_locales(), true)) {
 $_SESSION['locale'] = $lang;
 setcookie('vc_locale', $lang, time() + (86400 * 365), '/', '', false, true);
 
-$redirect = 'index.php';
-if (isset($_GET['redirect'])) {
-    $redirect = trim($_GET['redirect']);
-}
-if ($redirect == '' || strpos($redirect, '://') !== false || strpos($redirect, '..') !== false) {
-    $redirect = 'index.php';
-}
+$redirect = safe_redirect_path(isset($_GET['redirect']) ? $_GET['redirect'] : '', 'index.php');
 
 header('Location: ' . app_url($redirect));
 exit;

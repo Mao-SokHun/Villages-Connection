@@ -127,7 +127,8 @@ try {
     $stmt->execute($list_params);
     $users = $stmt->fetchAll();
 } catch (PDOException $e) {
-    die('Query error: ' . $e->getMessage());
+    app_log_error('Admin users query failed: ' . $e->getMessage());
+    die(app_public_error_message('Query error.'));
 }
 
 $list_has_filters = ($list_search != '' || $list_role != '' || $list_sort != 'newest');

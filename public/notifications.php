@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mark_read'])) {
         $go = trim($_POST['go']);
     }
     if ($go != '') {
-        header('Location: ' . app_url($go));
+        header('Location: ' . app_url(safe_redirect_path($go, 'notifications.php')));
         exit;
     }
     header('Location: notifications.php');

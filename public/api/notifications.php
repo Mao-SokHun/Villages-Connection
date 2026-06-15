@@ -45,9 +45,9 @@ foreach ($rows as $row) {
         'type' => $type,
         'type_label' => notification_type_label($type),
         'is_support' => notification_is_support_type($type) || $type == 'contact_message',
-        'title' => $row['title'],
-        'message' => excerpt($row['message'], 80),
-        'link' => $row['link_url'],
+        'title' => sanitize_plain_text_field($row['title'], 160),
+        'message' => sanitize_plain_text_field(excerpt($row['message'], 80), 200),
+        'link' => safe_redirect_path($row['link_url'], 'notifications.php'),
         'is_read' => ($row['is_read'] === true || $row['is_read'] == 1 || $row['is_read'] === 't'),
         'icon' => notification_icon($type),
         'time' => date('M j, H:i', strtotime($row['created_at']))

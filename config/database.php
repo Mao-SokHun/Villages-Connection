@@ -8,5 +8,7 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    die('Database Connection Failed: ' . $e->getMessage());
+    app_log_error('Database connection failed: ' . $e->getMessage());
+    http_response_code(503);
+    exit(app_public_error_message('Database connection failed.'));
 }

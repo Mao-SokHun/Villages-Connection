@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
     require_valid_csrf();
     $title = '';
     if (isset($_POST['title'])) {
-        $title = trim($_POST['title']);
+        $title = sanitize_plain_text_field($_POST['title'], 200);
     }
 
     $category_id = 0;
@@ -334,7 +334,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
             header('Location: posts.php');
             exit;
         } catch (PDOException $e) {
-            $errors[] = $e->getMessage();
+            app_log_error('Post save failed: ' . $e->getMessage());
+            $errors[] = app_public_error_message('Could not save the post.');
         }
     }
 }

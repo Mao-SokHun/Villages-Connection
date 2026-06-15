@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (isset($_POST['name'])) {
-        $name = trim($_POST['name']);
+        $name = sanitize_plain_text_field($_POST['name'], 80);
     }
     if (isset($_POST['email'])) {
         $email = trim($_POST['email']);

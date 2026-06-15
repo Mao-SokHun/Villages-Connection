@@ -2,3 +2,9 @@
 docker/certs/*.key
 docker/certs/*.crt
 storage/backups/*.sql.gz
+public/uploads/*
+!public/uploads/.gitkeep
+public/uploads/avatars/*
+!public/uploads/avatars/.gitkeep
+public/uploads/videos/*
+!public/uploads/videos/.gitkeep

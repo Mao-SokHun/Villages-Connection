@@ -92,7 +92,7 @@ function oauth_verify_state($provider, $state)
     }
     $saved = $_SESSION[$key];
     unset($_SESSION[$key]);
-    if ($state == '' || $saved != $state) {
+    if ($state == '' || !hash_equals((string) $saved, (string) $state)) {
         return false;
     }
     return true;
@@ -343,9 +343,47 @@ function facebook_fetch_user($code)
     );
 }
 
+function oauth_avatar_url_allowed($avatar_url)
+{
+    $parts = parse_url($avatar_url);
+    if (!$parts || !isset($parts['scheme']) || !isset($parts['host'])) {
+        return false;
+    }
+
+    if (strtolower($parts['scheme']) !== 'https') {
+        return false;
+    }
+
+    $host = strtolower($parts['host']);
+    $allowed_hosts = array(
+        'lh3.googleusercontent.com',
+        'lh4.googleusercontent.com',
+        'lh5.googleusercontent.com',
+        'lh6.googleusercontent.com',
+        'platform-lookaside.fbsbx.com',
+        'graph.facebook.com',
+    );
+
+    foreach ($allowed_hosts as $allowed) {
+        if ($host === $allowed) {
+            return true;
+        }
+        $suffix = '.' . $allowed;
+        if (strlen($host) > strlen($suffix) && substr($host, -strlen($suffix)) === $suffix) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function oauth_download_avatar($avatar_url)
 {
     if ($avatar_url == '' || !function_exists('upload_path')) {
+        return '';
+    }
+
+    if (!oauth_avatar_url_allowed($avatar_url)) {
         return '';
     }
 

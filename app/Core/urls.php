@@ -105,6 +105,10 @@ function app_url($path, $base_path = '')
         return $path;
     }
 
+    if (strpos($path, '//') === 0) {
+        $path = 'index.php';
+    }
+
     if (strpos($path, '/') === 0 && strpos($path, '//') !== 0) {
         return $path;
     }
@@ -174,6 +178,7 @@ function profile_url($user_id, $base_path = '')
 
 function redirect_to($path, $status = 302)
 {
+    $path = safe_redirect_path($path, 'index.php');
     $url = app_url($path);
     header('Location: ' . $url, true, (int) $status);
     exit;

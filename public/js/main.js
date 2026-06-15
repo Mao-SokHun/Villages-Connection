@@ -172,6 +172,9 @@ function appUrl(path) {
     if (/^https?:\/\//i.test(path)) {
         return path;
     }
+    if (path.charAt(0) === '/' && path.charAt(1) === '/') {
+        return appUrl('index.php');
+    }
     if (path.charAt(0) === '/') {
         return path;
     }
@@ -180,6 +183,18 @@ function appUrl(path) {
         return window.APP_ROUTE_MAP[clean];
     }
     return (window.APP_BASE || '') + clean;
+}
+
+function escapeHtml(value) {
+    if (value == null) {
+        return '';
+    }
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 var pendingConfirmForm = null;
@@ -1231,15 +1246,15 @@ function initNotificationDropdown() {
             var unreadClass = item.is_read ? '' : ' is-unread';
             var supportClass = item.is_support ? ' is-support' : '';
             var link = appUrl(item.link || 'notifications.php');
-            html += '<a href="' + link + '" class="nav-notify-item' + unreadClass + supportClass + '" data-notify-id="' + item.id + '">';
-            html += '<span class="nav-notify-item-icon"><i class="fa-solid ' + item.icon + '"></i></span>';
+            html += '<a href="' + escapeHtml(link) + '" class="nav-notify-item' + unreadClass + supportClass + '" data-notify-id="' + escapeHtml(item.id) + '">';
+            html += '<span class="nav-notify-item-icon"><i class="fa-solid ' + escapeHtml(item.icon) + '"></i></span>';
             html += '<span class="nav-notify-item-body">';
             if (item.type_label) {
-                html += '<span class="nav-notify-type">' + item.type_label + '</span>';
+                html += '<span class="nav-notify-type">' + escapeHtml(item.type_label) + '</span>';
             }
-            html += '<strong>' + item.title + '</strong>';
-            html += '<span>' + item.message + '</span>';
-            html += '<small>' + item.time + '</small>';
+            html += '<strong>' + escapeHtml(item.title) + '</strong>';
+            html += '<span>' + escapeHtml(item.message) + '</span>';
+            html += '<small>' + escapeHtml(item.time) + '</small>';
             html += '</span></a>';
         }
         list.innerHTML = html;

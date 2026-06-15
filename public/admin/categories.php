@@ -116,7 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['admin_action'])) {
             header('Location: categories.php');
             exit;
         } catch (PDOException $e) {
-            $errors[] = 'Database error: ' . $e->getMessage();
+            app_log_error('Category save failed: ' . $e->getMessage());
+            $errors[] = app_public_error_message('Database error.');
         }
     }
 }
