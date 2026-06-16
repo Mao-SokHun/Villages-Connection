@@ -3,10 +3,46 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 $page_title = __('auth.sign_in');
 $email = '';
 $errors = array();
+$recent_accounts = array();
 
 if (isLoggedIn()) {
     header('Location: index.php');
     exit;
+}
+
+if (isset($_COOKIE['vc_recent_accounts']) && $_COOKIE['vc_recent_accounts'] != '') {
+    $decoded = json_decode($_COOKIE['vc_recent_accounts'], true);
+    if (is_array($decoded)) {
+        foreach ($decoded as $item) {
+            if (!is_array($item) || !isset($item['email'])) {
+                continue;
+            }
+            $item_email = sanitize_plain_text_field(trim((string) $item['email']), 120);
+            if ($item_email == '' || !filter_var($item_email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+            $recent_accounts[] = array(
+                'name' => isset($item['name']) ? sanitize_plain_text_field($item['name'], 80) : '',
+                'email' => $item_email,
+                'avatar' => isset($item['avatar']) ? sanitize_plain_text_field($item['avatar'], 255) : '',
+            );
+            if (count($recent_accounts) >= 5) {
+                break;
+            }
+        }
+    }
+}
+
+if (isset($_GET['account']) && $email == '') {
+    $requested_email = sanitize_plain_text_field(trim((string) $_GET['account']), 120);
+    if ($requested_email != '' && filter_var($requested_email, FILTER_VALIDATE_EMAIL)) {
+        foreach ($recent_accounts as $recent) {
+            if (strcasecmp($recent['email'], $requested_email) == 0) {
+                $email = $recent['email'];
+                break;
+            }
+        }
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -108,6 +144,23 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
+                        <?php endif; ?>
+
+                        <?php if (count($recent_accounts) > 0): ?>
+                        <div class="recent-accounts mb-3">
+                            <div class="recent-accounts-head">Recent accounts</div>
+                            <div class="recent-accounts-list">
+                                <?php foreach ($recent_accounts as $recent): ?>
+                                <a href="<?php echo app_url('login.php?account=' . rawurlencode($recent['email'])); ?>" class="recent-account-item">
+                                    <?php echo render_user_avatar($recent['name'] != '' ? $recent['name'] : $recent['email'], $recent['avatar'], 'recent-account-avatar', $recent['email']); ?>
+                                    <span class="recent-account-meta">
+                                        <strong><?php echo htmlspecialchars($recent['name'] != '' ? $recent['name'] : 'Account'); ?></strong>
+                                        <small><?php echo htmlspecialchars($recent['email']); ?></small>
+                                    </span>
+                                </a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                         <?php endif; ?>
 
                         <form action="login.php" method="POST">

@@ -14,6 +14,13 @@ function is_cloudinary_url($url)
     return is_remote_media_url($url) && strpos($url, 'res.cloudinary.com') !== false;
 }
 
+function ensure_upload_directories()
+{
+    upload_path('');
+    upload_path('avatars');
+    upload_path('videos');
+}
+
 function upload_path($subdir)
 {
     $base = PUBLIC_PATH . '/uploads/';
@@ -138,14 +145,18 @@ function handle_image_upload($file, $existing)
 {
     $result = array('ok' => false, 'error' => 'Image upload failed');
 
-    if ($file['error'] != UPLOAD_ERR_OK) {
-        $result['ok'] = true;
-        $result['filename'] = $existing;
-        return $result;
+    $begin = upload_begin_handler($file, $existing, 'Image upload failed');
+    if ($begin !== null) {
+        return $begin;
     }
 
     $check = validate_uploaded_image_file($file, upload_max_image_bytes(), 'Image');
     if ($check['ok'] == false) {
+        if (isset($check['skipped']) && $check['skipped'] === true) {
+            $result['ok'] = true;
+            $result['filename'] = $existing;
+            return $result;
+        }
         $result['error'] = $check['error'];
         return $result;
     }
@@ -156,16 +167,17 @@ function handle_image_upload($file, $existing)
     ensure_cloudinary_loaded();
     if (cloudinary_enabled()) {
         $uploaded = cloudinary_upload_file($file['tmp_name'], 'image', 'posts');
-        if ($uploaded['ok'] == false) {
-            $result['error'] = $uploaded['error'];
+        if ($uploaded['ok'] == true) {
+            if ($existing != '') {
+                delete_upload($existing, '');
+            }
+            $result['ok'] = true;
+            $result['filename'] = $uploaded['filename'];
             return $result;
         }
-        if ($existing != '') {
-            delete_upload($existing, '');
+        if (function_exists('app_log_error')) {
+            app_log_error('Cloudinary image upload failed, using local disk: ' . $uploaded['error']);
         }
-        $result['ok'] = true;
-        $result['filename'] = $uploaded['filename'];
-        return $result;
     }
 
     if (move_uploaded_file($file['tmp_name'], upload_path('') . $name)) {
@@ -178,6 +190,7 @@ function handle_image_upload($file, $existing)
         return $result;
     }
 
+    $result['error'] = 'Could not save uploaded image. Check server upload folder permissions.';
     return $result;
 }
 
@@ -185,14 +198,18 @@ function handle_video_upload($file, $existing)
 {
     $result = array('ok' => false, 'error' => 'Video upload failed');
 
-    if ($file['error'] != UPLOAD_ERR_OK) {
-        $result['ok'] = true;
-        $result['filename'] = $existing;
-        return $result;
+    $begin = upload_begin_handler($file, $existing, 'Video upload failed');
+    if ($begin !== null) {
+        return $begin;
     }
 
     $check = validate_uploaded_video_file($file, upload_max_video_bytes(), 'Video');
     if ($check['ok'] == false) {
+        if (isset($check['skipped']) && $check['skipped'] === true) {
+            $result['ok'] = true;
+            $result['filename'] = $existing;
+            return $result;
+        }
         $result['error'] = $check['error'];
         return $result;
     }
@@ -203,16 +220,17 @@ function handle_video_upload($file, $existing)
     ensure_cloudinary_loaded();
     if (cloudinary_enabled()) {
         $uploaded = cloudinary_upload_file($file['tmp_name'], 'video', 'videos');
-        if ($uploaded['ok'] == false) {
-            $result['error'] = $uploaded['error'];
+        if ($uploaded['ok'] == true) {
+            if ($existing != '') {
+                delete_upload($existing, 'videos');
+            }
+            $result['ok'] = true;
+            $result['filename'] = $uploaded['filename'];
             return $result;
         }
-        if ($existing != '') {
-            delete_upload($existing, 'videos');
+        if (function_exists('app_log_error')) {
+            app_log_error('Cloudinary video upload failed, using local disk: ' . $uploaded['error']);
         }
-        $result['ok'] = true;
-        $result['filename'] = $uploaded['filename'];
-        return $result;
     }
 
     if (move_uploaded_file($file['tmp_name'], upload_path('videos') . $name)) {
@@ -225,6 +243,7 @@ function handle_video_upload($file, $existing)
         return $result;
     }
 
+    $result['error'] = 'Could not save uploaded video. Check server upload folder permissions.';
     return $result;
 }
 
@@ -468,14 +487,18 @@ function handle_avatar_upload($file, $existing)
 {
     $result = array('ok' => false, 'error' => 'Avatar upload failed');
 
-    if ($file['error'] != UPLOAD_ERR_OK) {
-        $result['ok'] = true;
-        $result['filename'] = $existing;
-        return $result;
+    $begin = upload_begin_handler($file, $existing, 'Avatar upload failed');
+    if ($begin !== null) {
+        return $begin;
     }
 
     $check = validate_uploaded_image_file($file, upload_max_avatar_bytes(), 'Avatar');
     if ($check['ok'] == false) {
+        if (isset($check['skipped']) && $check['skipped'] === true) {
+            $result['ok'] = true;
+            $result['filename'] = $existing;
+            return $result;
+        }
         $result['error'] = $check['error'];
         return $result;
     }
@@ -493,6 +516,7 @@ function handle_avatar_upload($file, $existing)
         return $result;
     }
 
+    $result['error'] = 'Could not save uploaded avatar. Check server upload folder permissions.';
     return $result;
 }
 
@@ -854,6 +878,14 @@ function refresh_user_session($pdo, $user_id)
     }
     $_SESSION['account_status'] = user_account_status($user);
     $_SESSION['is_banned'] = user_is_banned($user);
+    $_SESSION['ui_theme'] = 'system';
+    if (isset($user['ui_theme']) && ($user['ui_theme'] == 'light' || $user['ui_theme'] == 'dark' || $user['ui_theme'] == 'system')) {
+        $_SESSION['ui_theme'] = $user['ui_theme'];
+    }
+    $_SESSION['ui_density'] = 'comfortable';
+    if (isset($user['ui_density']) && ($user['ui_density'] == 'comfortable' || $user['ui_density'] == 'compact')) {
+        $_SESSION['ui_density'] = $user['ui_density'];
+    }
 
     return true;
 }

@@ -15,6 +15,8 @@ CREATE TABLE users (
     website VARCHAR(255) DEFAULT '',
     oauth_provider VARCHAR(20) NOT NULL DEFAULT 'local',
     oauth_id VARCHAR(100) DEFAULT '',
+    ui_theme VARCHAR(10) NOT NULL DEFAULT 'system',
+    ui_density VARCHAR(20) NOT NULL DEFAULT 'comfortable',
     is_banned BOOLEAN NOT NULL DEFAULT FALSE,
     banned_reason TEXT DEFAULT '',
     banned_at TIMESTAMP,

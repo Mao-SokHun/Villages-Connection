@@ -19,6 +19,8 @@ $bio = '';
 $location = '';
 $website = '';
 $avatar = '';
+$ui_theme = 'system';
+$ui_density = 'comfortable';
 
 if (isset($user['bio'])) {
     $bio = $user['bio'];
@@ -31,6 +33,12 @@ if (isset($user['website'])) {
 }
 if (isset($user['avatar'])) {
     $avatar = $user['avatar'];
+}
+if (isset($user['ui_theme']) && ($user['ui_theme'] == 'light' || $user['ui_theme'] == 'dark' || $user['ui_theme'] == 'system')) {
+    $ui_theme = $user['ui_theme'];
+}
+if (isset($user['ui_density']) && ($user['ui_density'] == 'compact' || $user['ui_density'] == 'comfortable')) {
+    $ui_density = $user['ui_density'];
 }
 
 $is_oauth_user = is_oauth_user($user);
@@ -57,6 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     if (isset($_POST['website'])) {
         $website = trim($_POST['website']);
+    }
+    if (isset($_POST['ui_theme'])) {
+        $ui_theme = trim($_POST['ui_theme']);
+    }
+    if (isset($_POST['ui_density'])) {
+        $ui_density = trim($_POST['ui_density']);
     }
 
     $current_password = '';
@@ -85,6 +99,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     if ($website != '' && !filter_var($website, FILTER_VALIDATE_URL)) {
         $errors[] = 'Website must be a valid URL (include https://).';
+    }
+    if ($ui_theme != 'system' && $ui_theme != 'light' && $ui_theme != 'dark') {
+        $errors[] = 'Theme preference is invalid.';
+    }
+    if ($ui_density != 'comfortable' && $ui_density != 'compact') {
+        $errors[] = 'Layout density is invalid.';
     }
 
     if ($new_password != '' || $confirm_password != '' || $current_password != '') {
@@ -130,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (count($errors) == 0) {
-        $sql = 'UPDATE users SET name = :name, email = :email, bio = :bio, location = :location, website = :website, avatar = :avatar, updated_at = CURRENT_TIMESTAMP';
+        $sql = 'UPDATE users SET name = :name, email = :email, bio = :bio, location = :location, website = :website, avatar = :avatar, ui_theme = :ui_theme, ui_density = :ui_density, updated_at = CURRENT_TIMESTAMP';
         $params = array(
             'name' => $name,
             'email' => $email,
@@ -138,6 +158,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             'location' => $location,
             'website' => $website,
             'avatar' => $new_avatar,
+            'ui_theme' => $ui_theme,
+            'ui_density' => $ui_density,
             'id' => $user['id']
         );
 
@@ -177,7 +199,28 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <h2 class="text-white mb-1"><i class="fa-solid fa-user-pen text-warning me-2"></i>Edit Profile</h2>
                     <p class="text-secondary small mb-0">Update your account details and public profile</p>
                 </div>
-                <a href="profile.php" class="btn btn-outline-custom btn-sm">Back to Profile</a>
+
+                <h5 class="text-white mb-3">Preferences</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label form-label-custom">Theme Preference</label>
+                        <select name="ui_theme" class="form-select form-control-custom">
+                            <option value="system" <?php if ($ui_theme == 'system') echo 'selected'; ?>>System default</option>
+                            <option value="dark" <?php if ($ui_theme == 'dark') echo 'selected'; ?>>Dark</option>
+                            <option value="light" <?php if ($ui_theme == 'light') echo 'selected'; ?>>Light</option>
+                        </select>
+                        <div class="form-text text-secondary small">If you use navbar toggle, it can override this on this device.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label form-label-custom">Layout Density</label>
+                        <select name="ui_density" class="form-select form-control-custom">
+                            <option value="comfortable" <?php if ($ui_density == 'comfortable') echo 'selected'; ?>>Comfortable</option>
+                            <option value="compact" <?php if ($ui_density == 'compact') echo 'selected'; ?>>Compact</option>
+                        </select>
+                        <div class="form-text text-secondary small">Compact mode reduces spacing to fit more content.</div>
+                    </div>
+                </div>
+                <a href="<?php echo app_url('profile.php'); ?>" class="btn btn-outline-custom btn-sm">Back to Profile</a>
             </div>
 
             <?php if (count($errors) > 0): ?>
@@ -190,7 +233,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             </div>
             <?php endif; ?>
 
-            <form method="POST" enctype="multipart/form-data" action="edit-profile.php">
+            <form method="POST" enctype="multipart/form-data" action="<?php echo app_url('edit-profile.php'); ?>">
                 <?php echo csrf_field(); ?>
                 <div class="profile-edit-preview mb-4">
                     <?php echo render_user_avatar($name, $avatar, 'user-avatar-xl', user_public_email($user)); ?>

@@ -356,7 +356,29 @@ function initThemeToggle() {
         }
         html.setAttribute('data-theme', next);
         localStorage.setItem('cms-theme', next);
+        saveUserUiPreference('theme', next);
     });
+}
+
+function saveUserUiPreference(key, value) {
+    if (!window.APP_USER_PREFS || !window.APP_USER_PREFS.loggedIn) {
+        return;
+    }
+    var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    if (!tokenMeta) {
+        return;
+    }
+
+    var fd = new FormData();
+    fd.append('csrf_token', tokenMeta.getAttribute('content') || '');
+    fd.append('key', key);
+    fd.append('value', value);
+
+    fetch(appUrl('api/user-preferences.php'), {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin'
+    }).catch(function() {});
 }
 
 function initCustomSelects() {

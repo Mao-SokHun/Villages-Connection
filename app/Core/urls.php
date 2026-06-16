@@ -26,6 +26,7 @@ function public_pretty_route_map()
         'terms.php' => '/terms',
         'search.php' => '/search',
         'bookmarks.php' => '/bookmarks',
+        'announcements.php' => '/announcements',
         'notifications.php' => '/notifications',
         'profile.php' => '/profile',
         'edit-profile.php' => '/settings/profile',

@@ -657,6 +657,72 @@ function login_user_session($user)
     }
     $_SESSION['account_status'] = user_account_status($user);
     $_SESSION['is_banned'] = user_is_banned($user);
+    $_SESSION['ui_theme'] = 'system';
+    if (isset($user['ui_theme']) && ($user['ui_theme'] == 'light' || $user['ui_theme'] == 'dark' || $user['ui_theme'] == 'system')) {
+        $_SESSION['ui_theme'] = $user['ui_theme'];
+    }
+    $_SESSION['ui_density'] = 'comfortable';
+    if (isset($user['ui_density']) && ($user['ui_density'] == 'comfortable' || $user['ui_density'] == 'compact')) {
+        $_SESSION['ui_density'] = $user['ui_density'];
+    }
+    remember_recent_account($user);
+}
+
+function remember_recent_account($user)
+{
+    if (!is_array($user) || !isset($user['email']) || trim((string) $user['email']) == '') {
+        return;
+    }
+
+    $items = array();
+    if (isset($_COOKIE['vc_recent_accounts']) && $_COOKIE['vc_recent_accounts'] != '') {
+        $decoded = json_decode($_COOKIE['vc_recent_accounts'], true);
+        if (is_array($decoded)) {
+            $items = $decoded;
+        }
+    }
+
+    $email = trim((string) $user['email']);
+    $clean = array();
+    foreach ($items as $item) {
+        if (!is_array($item) || !isset($item['email'])) {
+            continue;
+        }
+        $item_email = trim((string) $item['email']);
+        if ($item_email == '' || strcasecmp($item_email, $email) == 0) {
+            continue;
+        }
+        $clean[] = array(
+            'name' => isset($item['name']) ? sanitize_plain_text_field($item['name'], 80) : '',
+            'email' => sanitize_plain_text_field($item_email, 120),
+            'avatar' => isset($item['avatar']) ? sanitize_plain_text_field($item['avatar'], 255) : '',
+            'provider' => isset($item['provider']) ? sanitize_plain_text_field($item['provider'], 20) : 'local',
+            'last_login' => isset($item['last_login']) ? (int) $item['last_login'] : 0,
+        );
+    }
+
+    $clean = array_slice($clean, 0, 4);
+    array_unshift($clean, array(
+        'name' => isset($user['name']) ? sanitize_plain_text_field($user['name'], 80) : '',
+        'email' => sanitize_plain_text_field($email, 120),
+        'avatar' => isset($user['avatar']) ? sanitize_plain_text_field($user['avatar'], 255) : '',
+        'provider' => isset($user['oauth_provider']) && $user['oauth_provider'] != '' ? sanitize_plain_text_field($user['oauth_provider'], 20) : 'local',
+        'last_login' => time(),
+    ));
+
+    $value = json_encode($clean);
+    if (!is_string($value)) {
+        return;
+    }
+
+    $is_secure = request_is_https();
+    setcookie('vc_recent_accounts', $value, array(
+        'expires' => time() + (86400 * 180),
+        'path' => '/',
+        'secure' => $is_secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ));
 }
 
 function oauth_login_redirect($user)

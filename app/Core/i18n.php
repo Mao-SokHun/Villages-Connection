@@ -2,7 +2,7 @@
 
 function supported_locales()
 {
-    return array('km', 'en');
+    return array('en');
 }
 
 function init_locale()
@@ -19,7 +19,7 @@ function init_locale()
         if (isset($_COOKIE['vc_locale']) && in_array($_COOKIE['vc_locale'], supported_locales(), true)) {
             $_SESSION['locale'] = $_COOKIE['vc_locale'];
         } else {
-            $_SESSION['locale'] = 'km';
+            $_SESSION['locale'] = 'en';
         }
     }
 }
@@ -29,7 +29,7 @@ function current_locale()
     if (isset($_SESSION['locale']) && in_array($_SESSION['locale'], supported_locales(), true)) {
         return $_SESSION['locale'];
     }
-    return 'km';
+    return 'en';
 }
 
 function locale_label($locale)
@@ -37,7 +37,7 @@ function locale_label($locale)
     if ($locale == 'en') {
         return 'English';
     }
-    return 'ខ្មែរ';
+    return 'English';
 }
 
 function load_translations($locale)

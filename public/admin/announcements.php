@@ -2,6 +2,28 @@
 require_once __DIR__ . '/auth.php';
 requireAdmin();
 
+function announcement_is_live_now($is_active, $starts_at, $ends_at)
+{
+    if ((int) $is_active !== 1) {
+        return false;
+    }
+
+    $now = time();
+    if ($starts_at !== null && $starts_at !== '') {
+        $start_ts = strtotime($starts_at);
+        if ($start_ts !== false && $start_ts > $now) {
+            return false;
+        }
+    }
+    if ($ends_at !== null && $ends_at !== '') {
+        $end_ts = strtotime($ends_at);
+        if ($end_ts !== false && $end_ts < $now) {
+            return false;
+        }
+    }
+    return true;
+}
+
 $action = '';
 if (isset($_GET['action'])) {
     $action = $_GET['action'];
@@ -60,9 +82,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['admin_action'])) {
         $db_action = isset($_POST['db_action']) ? $_POST['db_action'] : 'add';
 
         if ($db_action == 'add') {
-            $sql = 'INSERT INTO announcements (title, message, link_url, is_active, starts_at, ends_at) VALUES (:title, :message, :link_url, :is_active, :starts_at, :ends_at)';
-            $pdo->prepare($sql)->execute($fields);
+            $sql = 'INSERT INTO announcements (title, message, link_url, is_active, starts_at, ends_at) VALUES (:title, :message, :link_url, :is_active, :starts_at, :ends_at) RETURNING id';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($fields);
+            $announcement_id = (int) $stmt->fetchColumn();
             log_activity($pdo, 'announcement.created', $title);
+
+            if (announcement_is_live_now($is_active, $fields['starts_at'], $fields['ends_at'])) {
+                $notification_link = 'announcements.php';
+                if ($announcement_id > 0) {
+                    $notification_link = 'announcements.php?id=' . $announcement_id;
+                }
+                notify_all_members_announcement(
+                    $pdo,
+                    'New announcement: ' . excerpt($title, 60),
+                    excerpt($message, 140),
+                    $notification_link
+                );
+            }
+
             setFlashMessage('success', 'Announcement created.');
         } elseif ($db_action == 'edit' && $id > 0) {
             $fields['id'] = $id;

@@ -127,6 +127,9 @@ function mark_admin_contact_notifications_read($pdo, $admin_id, $message_id)
 
 function notification_type_label($type)
 {
+    if ($type == 'announcement') {
+        return 'Announcement';
+    }
     if ($type == 'contact_reply' || $type == 'contact_sent') {
         return 'Support';
     }
@@ -137,6 +140,9 @@ function notification_type_label($type)
         return 'Review';
     }
     if ($type == 'content_report') {
+        return 'Report';
+    }
+    if ($type == 'report_update') {
         return 'Report';
     }
     if ($type == 'post_approved' || $type == 'post_rejected') {
@@ -390,6 +396,36 @@ function notify_all_admins($pdo, $type, $title, $message, $link_url = '', $send_
     }
 }
 
+function notify_all_members_announcement($pdo, $title, $message, $link_url = '')
+{
+    try {
+        $stmt = $pdo->query("SELECT id FROM users WHERE role != 'admin' AND COALESCE(account_status, 'active') = 'active' AND COALESCE(is_banned, FALSE) = FALSE");
+        $user_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        return;
+    }
+
+    if (!is_array($user_ids) || count($user_ids) == 0) {
+        return;
+    }
+
+    foreach ($user_ids as $user_id) {
+        $user_id = (int) $user_id;
+        if ($user_id <= 0) {
+            continue;
+        }
+        create_notification(
+            $pdo,
+            $user_id,
+            'announcement',
+            $title,
+            $message,
+            $link_url,
+            false
+        );
+    }
+}
+
 function notify_admins_contact_message($pdo, $message_id, $name, $email, $subject)
 {
     $title = 'New contact message';
@@ -466,6 +502,41 @@ function notify_admins_content_report($pdo, $report_id, $reason)
         'New content report',
         excerpt($reason, 80),
         'admin/reports.php?action=view&id=' . (int) $report_id
+    );
+}
+
+function notify_reporter_status_update($pdo, $report_id, $status, $admin_notes = '')
+{
+    $stmt = $pdo->prepare('SELECT id, user_id, reason FROM content_reports WHERE id = :id');
+    $stmt->execute(array('id' => (int) $report_id));
+    $report = $stmt->fetch();
+    if (!$report || !isset($report['user_id']) || (int) $report['user_id'] <= 0) {
+        return;
+    }
+
+    $title = 'Report update';
+    $message = 'Your report was updated by admin.';
+    if ($status === 'resolved') {
+        $title = 'Report resolved';
+        $message = 'Your report "' . excerpt($report['reason'], 48) . '" was marked as resolved.';
+    } elseif ($status === 'open') {
+        $title = 'Report reopened';
+        $message = 'Your report "' . excerpt($report['reason'], 48) . '" was reopened for review.';
+    }
+
+    $admin_notes = trim((string) $admin_notes);
+    if ($admin_notes !== '') {
+        $message .= ' Note: ' . excerpt($admin_notes, 80);
+    }
+
+    create_notification(
+        $pdo,
+        (int) $report['user_id'],
+        'report_update',
+        $title,
+        $message,
+        'notifications.php',
+        false
     );
 }
 
@@ -785,6 +856,9 @@ function duplicate_author_post($pdo, $post_id)
 
 function notification_icon($type)
 {
+    if ($type == 'announcement') {
+        return 'fa-bullhorn text-info';
+    }
     if ($type == 'post_approved') {
         return 'fa-circle-check text-success';
     }
@@ -823,6 +897,9 @@ function notification_icon($type)
     }
     if ($type == 'content_report') {
         return 'fa-flag text-danger';
+    }
+    if ($type == 'report_update') {
+        return 'fa-flag-checkered text-info';
     }
     return 'fa-bell text-secondary';
 }

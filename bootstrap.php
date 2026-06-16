@@ -31,6 +31,8 @@ if (isLoggedIn()) {
     ensure_active_authenticated_user($pdo);
 }
 
+ensure_upload_directories();
+
 spl_autoload_register(function ($class) {
     $prefix = 'App\\';
     $len = strlen($prefix);

@@ -16,7 +16,7 @@ if ($profile_id > 0) {
     $is_own_profile = true;
 } else {
     setFlashMessage('warning', 'Please login to view your profile.');
-    header('Location: login.php');
+    header('Location: ' . app_url('login.php'));
     exit;
 }
 
@@ -217,11 +217,11 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
 
                     <?php if ($is_own_profile): ?>
                     <div class="profile-actions">
-                        <a href="edit-profile.php" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen"></i> Edit Profile</a>
-                        <a href="admin/dashboard.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-gauge"></i> Dashboard</a>
-                        <a href="admin/posts.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-square-pen"></i> My Posts</a>
+                        <a href="<?php echo app_url('edit-profile.php'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen"></i> Edit Profile</a>
+                        <a href="<?php echo admin_area_url('dashboard.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+                        <a href="<?php echo admin_area_url('posts.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-square-pen"></i> My Posts</a>
                         <?php if ($own_drafts > 0): ?>
-                        <a href="admin/posts.php?status=Draft" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-file-lines"></i> My Drafts (<?php echo $own_drafts; ?>)</a>
+                        <a href="<?php echo admin_area_url('posts.php?status=Draft'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-file-lines"></i> My Drafts (<?php echo $own_drafts; ?>)</a>
                         <?php endif; ?>
                     </div>
                     <?php else: ?>
@@ -236,9 +236,9 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                             <?php echo $is_following_profile ? 'Unfollow' : 'Follow'; ?>
                         </button>
                         <?php else: ?>
-                        <a href="login.php" class="btn btn-gradient btn-sm"><i class="fa-solid fa-user-plus"></i> Follow</a>
+                        <a href="<?php echo app_url('login.php'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-user-plus"></i> Follow</a>
                         <?php endif; ?>
-                        <a href="index.php?author=<?php echo (int) $user['id']; ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-images"></i> View Posts</a>
+                        <a href="<?php echo app_url('index.php?author=' . (int) $user['id']); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-images"></i> View Posts</a>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -252,7 +252,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <p class="text-secondary small mb-0"><?php echo $post_count; ?> post<?php if ($post_count != 1) echo 's'; ?> on <?php echo SITE_NAME; ?></p>
                 </div>
                 <?php if ($is_own_profile): ?>
-                <a href="admin/posts.php?action=add" class="btn btn-gradient btn-sm"><i class="fa-solid fa-plus"></i> New Post</a>
+                <a href="<?php echo admin_area_url('posts.php?action=add'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-plus"></i> New Post</a>
                 <?php endif; ?>
             </div>
 
@@ -268,7 +268,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <?php endif; ?>
                 </p>
                 <?php if ($is_own_profile): ?>
-                <a href="admin/posts.php?action=add" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen-nib"></i> Create Post</a>
+                <a href="<?php echo admin_area_url('posts.php?action=add'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen-nib"></i> Create Post</a>
                 <?php endif; ?>
             </div>
             <?php else: ?>

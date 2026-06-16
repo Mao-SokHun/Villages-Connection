@@ -27,7 +27,49 @@ function loadEnv($path)
     return true;
 }
 
+function apply_database_url_from_env()
+{
+    $url = getenv('DATABASE_URL');
+    if ($url == false || $url == '') {
+        return;
+    }
+
+    $parts = parse_url($url);
+    if (!$parts || !isset($parts['host'])) {
+        return;
+    }
+
+    if (!getenv('DB_HOST')) {
+        putenv('DB_HOST=' . $parts['host']);
+        $_ENV['DB_HOST'] = $parts['host'];
+        $_SERVER['DB_HOST'] = $parts['host'];
+    }
+    if (!getenv('DB_PORT') && isset($parts['port'])) {
+        putenv('DB_PORT=' . $parts['port']);
+        $_ENV['DB_PORT'] = (string) $parts['port'];
+        $_SERVER['DB_PORT'] = (string) $parts['port'];
+    }
+    if (!getenv('DB_DATABASE') && isset($parts['path'])) {
+        $db = ltrim($parts['path'], '/');
+        putenv('DB_DATABASE=' . $db);
+        $_ENV['DB_DATABASE'] = $db;
+        $_SERVER['DB_DATABASE'] = $db;
+    }
+    if (!getenv('DB_USERNAME') && isset($parts['user'])) {
+        putenv('DB_USERNAME=' . $parts['user']);
+        $_ENV['DB_USERNAME'] = $parts['user'];
+        $_SERVER['DB_USERNAME'] = $parts['user'];
+    }
+    if (!getenv('DB_PASSWORD') && isset($parts['pass'])) {
+        putenv('DB_PASSWORD=' . $parts['pass']);
+        $_ENV['DB_PASSWORD'] = $parts['pass'];
+        $_SERVER['DB_PASSWORD'] = $parts['pass'];
+    }
+}
+
 loadEnv(__DIR__ . '/../.env');
+
+apply_database_url_from_env();
 
 require_once __DIR__ . '/../app/Core/rate_limit.php';
 require_once __DIR__ . '/../app/Core/security.php';
@@ -108,6 +150,9 @@ if (APP_ENV === 'production') {
     $debug_on = false;
 }
 define('APP_DEBUG', $debug_on);
+
+$i18n_switcher = getenv('I18N_USER_SWITCHER_ENABLED');
+define('I18N_USER_SWITCHER_ENABLED', $i18n_switcher === 'true' || $i18n_switcher === '1');
 
 if (!APP_DEBUG) {
     ini_set('display_errors', '0');

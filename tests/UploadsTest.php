@@ -90,6 +90,22 @@ class UploadsTest extends TestCase
         $this->assertSame(50 * 1024 * 1024, upload_max_video_bytes());
     }
 
+    public function testUploadBeginHandlerSkipsWhenNoFile()
+    {
+        $file = array('error' => UPLOAD_ERR_NO_FILE);
+        $begin = upload_begin_handler($file, 'old.jpg', 'Upload failed');
+        $this->assertTrue($begin['ok']);
+        $this->assertSame('old.jpg', $begin['filename']);
+    }
+
+    public function testUploadBeginHandlerReportsOversize()
+    {
+        $file = array('error' => UPLOAD_ERR_INI_SIZE);
+        $begin = upload_begin_handler($file, '', 'Upload failed');
+        $this->assertFalse($begin['ok']);
+        $this->assertStringContainsString('too large', strtolower($begin['error']));
+    }
+
     private function makeTempFile($contents, $name)
     {
         $path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('vc_upload_', true) . '_' . $name;

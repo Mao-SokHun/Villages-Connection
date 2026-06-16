@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Village Connect premium logo B">
+  <defs>
+    <linearGradient id="bBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="55%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="bAccent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bBg)"/>
+  <rect x="9" y="9" width="46" height="46" rx="12" fill="none" stroke="#e2e8f0" stroke-opacity="0.22"/>
+  <path d="M32 17 16.5 29.8h4.2V47h9.3V37h4V47h9.3V29.8h4.2L32 17Z" fill="#f8fafc"/>
+  <path d="M21 24.8 32 20l11 4.8" stroke="url(#bAccent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

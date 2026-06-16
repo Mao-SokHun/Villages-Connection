@@ -70,7 +70,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <h2 class="text-white mb-1"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i>Delete Account</h2>
                     <p class="text-secondary mb-0">Your account will be closed and you will be signed out.</p>
                 </div>
-                <a href="edit-profile.php" class="btn btn-outline-custom btn-sm">Back to Edit Profile</a>
+                <a href="<?php echo app_url('edit-profile.php'); ?>" class="btn btn-outline-custom btn-sm">Back to Edit Profile</a>
             </div>
 
             <?php if (!$can_delete): ?>
@@ -123,7 +123,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             </div>
             <?php endif; ?>
 
-            <form method="POST" action="delete-account.php" class="danger-zone-confirm-form">
+            <form method="POST" action="<?php echo app_url('delete-account.php'); ?>" class="danger-zone-confirm-form">
                 <?php echo csrf_field(); ?>
                 <div class="row g-3">
                     <?php if ($is_oauth_user): ?>
@@ -150,7 +150,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <button type="submit" class="btn btn-danger danger-zone-btn">
                         <i class="fa-solid fa-trash-can"></i> Close My Account
                     </button>
-                    <a href="edit-profile.php" class="btn btn-outline-custom">Cancel</a>
+                    <a href="<?php echo app_url('edit-profile.php'); ?>" class="btn btn-outline-custom">Cancel</a>
                 </div>
             </form>
             <?php endif; ?>

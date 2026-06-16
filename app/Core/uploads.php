@@ -25,6 +25,51 @@ function upload_secure_filename($ext)
     return bin2hex(random_bytes(16)) . '_' . time() . '.' . $ext;
 }
 
+function upload_php_error_message($code)
+{
+    switch ((int) $code) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'File is too large. Reduce the file size or contact the administrator.';
+        case UPLOAD_ERR_PARTIAL:
+            return 'Upload was interrupted. Please try again.';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'Server upload folder is missing. Contact the administrator.';
+        case UPLOAD_ERR_CANT_WRITE:
+            return 'Server could not save the uploaded file.';
+        case UPLOAD_ERR_EXTENSION:
+            return 'Upload blocked by a server extension.';
+        default:
+            return 'Upload failed. Please try again.';
+    }
+}
+
+function upload_file_selected($file)
+{
+    if (!isset($file['error'])) {
+        return false;
+    }
+
+    return (int) $file['error'] !== UPLOAD_ERR_NO_FILE;
+}
+
+function upload_begin_handler($file, $existing, $default_error = 'Upload failed')
+{
+    if (!isset($file['error'])) {
+        return array('ok' => false, 'error' => $default_error);
+    }
+
+    if ((int) $file['error'] === UPLOAD_ERR_NO_FILE) {
+        return array('ok' => true, 'filename' => $existing, 'skipped' => true);
+    }
+
+    if ((int) $file['error'] !== UPLOAD_ERR_OK) {
+        return array('ok' => false, 'error' => upload_php_error_message($file['error']));
+    }
+
+    return null;
+}
+
 function upload_allowed_image_extensions()
 {
     return array('jpg', 'jpeg', 'png', 'webp', 'gif');
@@ -132,7 +177,7 @@ function validate_uploaded_image_file($file, $max_bytes, $label = 'Image')
     }
 
     if ($file['error'] != UPLOAD_ERR_OK) {
-        $result['error'] = $label . ' upload failed';
+        $result['error'] = upload_php_error_message($file['error']);
         return $result;
     }
 
@@ -189,7 +234,7 @@ function validate_uploaded_video_file($file, $max_bytes, $label = 'Video')
     }
 
     if ($file['error'] != UPLOAD_ERR_OK) {
-        $result['error'] = $label . ' upload failed';
+        $result['error'] = upload_php_error_message($file['error']);
         return $result;
     }
 

@@ -52,9 +52,12 @@ if (!isset($canonical_url) || $canonical_url == '') {
     $canonical_url = current_page_url();
 }
 
-$lang_redirect = basename($_SERVER['SCRIPT_NAME']);
-if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
-    $lang_redirect .= '?' . $_SERVER['QUERY_STRING'];
+$lang_redirect = '';
+if (I18N_USER_SWITCHER_ENABLED) {
+    $lang_redirect = basename($_SERVER['SCRIPT_NAME']);
+    if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
+        $lang_redirect .= '?' . $_SERVER['QUERY_STRING'];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -82,34 +85,51 @@ if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
     <meta name="twitter:description" content="<?php echo htmlspecialchars($page_description); ?>">
     <script>
     (function() {
+        var userPrefs = {
+            theme: <?php echo json_encode(isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system'); ?>,
+            density: <?php echo json_encode(isset($_SESSION['ui_density']) ? $_SESSION['ui_density'] : 'comfortable'); ?>
+        };
         var saved = localStorage.getItem('cms-theme');
         var theme = 'dark';
         if (saved == 'light' || saved == 'dark') {
             theme = saved;
+        } else if (userPrefs.theme == 'light' || userPrefs.theme == 'dark') {
+            theme = userPrefs.theme;
         } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
             theme = 'light';
         }
         document.documentElement.setAttribute('data-theme', theme);
+
+        var density = localStorage.getItem('cms-density');
+        if (density != 'compact' && density != 'comfortable') {
+            density = userPrefs.density == 'compact' ? 'compact' : 'comfortable';
+        }
+        document.documentElement.setAttribute('data-density', density);
     })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Estonia&family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@300;400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@300;400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=Estonia&family=Kings&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="<?php echo $base_path; ?>css/style.css?v=<?php echo asset_version('css/style.css'); ?>" rel="stylesheet">
-    <link rel="manifest" href="<?php echo $base_path; ?>manifest.webmanifest">
+    <link href="/css/style.css?v=<?php echo asset_version('css/style.css'); ?>" rel="stylesheet">
+    <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="<?php echo $base_path; ?>icons/icon-192.svg">
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg">
     <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token()); ?>">
     <script>
     window.APP_BASE = <?php echo json_encode($base_path); ?>;
     window.APP_PRETTY = <?php echo pretty_urls_enabled() ? 'true' : 'false'; ?>;
     window.APP_ROUTE_MAP = <?php echo json_encode(public_pretty_route_map()); ?>;
+    window.APP_USER_PREFS = <?php echo json_encode(array(
+        'theme' => isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system',
+        'density' => isset($_SESSION['ui_density']) ? $_SESSION['ui_density'] : 'comfortable',
+        'loggedIn' => isLoggedIn()
+    )); ?>;
     window.APP_I18N = <?php echo json_encode(array(
         'like_login' => __('post.like_login'),
         'like_thanks' => __('post.like_thanks'),
@@ -131,7 +151,7 @@ if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
 <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top" id="main-navbar">
     <div class="container navbar-container">
         <a class="navbar-brand navbar-brand-custom" href="<?php echo app_url('index.php'); ?>">
-            <span class="brand-icon"><i class="fa-solid fa-house-chimney"></i></span>
+            <span class="brand-icon"><img src="/icons/brand-mark.svg" alt="<?php echo htmlspecialchars(SITE_NAME); ?> logo" class="brand-icon-image"></span>
             <span class="brand-text">
                 <span class="brand-title"><?php echo SITE_NAME; ?></span>
             </span>
@@ -234,10 +254,12 @@ if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
                 </form>
 
                 <div class="navbar-tools">
+                    <?php if (I18N_USER_SWITCHER_ENABLED): ?>
                     <div class="nav-lang-switch" aria-label="<?php echo htmlspecialchars(__('common.language')); ?>">
                         <a href="<?php echo $base_path; ?>set-language.php?lang=km&amp;redirect=<?php echo urlencode($lang_redirect); ?>" class="nav-lang-btn<?php if (current_locale() == 'km') echo ' active'; ?>" title="ខ្មែរ">ខ្មែរ</a>
                         <a href="<?php echo $base_path; ?>set-language.php?lang=en&amp;redirect=<?php echo urlencode($lang_redirect); ?>" class="nav-lang-btn<?php if (current_locale() == 'en') echo ' active'; ?>" title="English">EN</a>
                     </div>
+                    <?php endif; ?>
                     <button type="button" id="theme-toggle" class="nav-tool-btn theme-toggle-btn" aria-label="<?php echo htmlspecialchars(__('common.theme')); ?>" title="<?php echo htmlspecialchars(__('common.theme')); ?>">
                         <i class="fa-solid fa-moon theme-icon-dark"></i>
                         <i class="fa-solid fa-sun theme-icon-light"></i>
@@ -339,6 +361,16 @@ if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('support.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-headset"></i></span><span class="dropdown-item-text"><?php echo __('nav.support_messages'); ?></span></a></li>
                             <?php endif; ?>
                             <li><hr class="dropdown-divider-custom"></li>
+                            <li>
+                                <form method="POST" action="<?php echo app_url('logout.php'); ?>" class="dropdown-logout-form">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="switch_account" value="1">
+                                    <button type="submit" class="dropdown-item-custom w-100 text-start border-0 bg-transparent">
+                                        <span class="dropdown-item-icon"><i class="fa-solid fa-users"></i></span>
+                                        <span class="dropdown-item-text">Switch account</span>
+                                    </button>
+                                </form>
+                            </li>
                             <li>
                                 <form method="POST" action="<?php echo app_url('logout.php'); ?>" class="dropdown-logout-form">
                                     <?php echo csrf_field(); ?>

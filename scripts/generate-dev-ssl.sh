@@ -13,5 +13,6 @@ openssl req -x509 -nodes -days 825 -newkey rsa:2048 \
     -out "$CERT_DIR/dev.crt" \
     -subj "/CN=localhost"
 
-echo "Created docker/certs/dev.crt and dev.key"
-echo "Use https://localhost:8443 after: docker compose up -d --build"
+echo "Optional dev HTTPS certs created."
+echo "Local dev uses HTTP: http://localhost:8080"
+echo "Production HTTPS: docker-compose.prod.yml + scripts/oracle-enable-https.sh"
