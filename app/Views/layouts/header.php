@@ -355,6 +355,25 @@ if (I18N_USER_SWITCHER_ENABLED) {
                             <?php if ($show_user_menu_edit_profile): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('edit-profile.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-user-pen"></i></span><span class="dropdown-item-text"><?php echo __('nav.edit_profile'); ?></span></a></li>
                             <?php endif; ?>
+                            <li><hr class="dropdown-divider-custom"></li>
+                            <li class="profile-pref-group px-3 py-2">
+                                <div class="profile-pref-title">Appearance</div>
+                                <div class="profile-pref-row">
+                                    <span class="profile-pref-label">Theme</span>
+                                    <div class="profile-pref-actions">
+                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system') == 'system') echo ' active'; ?>" data-pref-key="theme" data-pref-value="system">System</button>
+                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system') == 'dark') echo ' active'; ?>" data-pref-key="theme" data-pref-value="dark">Dark</button>
+                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system') == 'light') echo ' active'; ?>" data-pref-key="theme" data-pref-value="light">Light</button>
+                                    </div>
+                                </div>
+                                <div class="profile-pref-row">
+                                    <span class="profile-pref-label">Density</span>
+                                    <div class="profile-pref-actions">
+                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_density']) ? $_SESSION['ui_density'] : 'comfortable') == 'comfortable') echo ' active'; ?>" data-pref-key="density" data-pref-value="comfortable">Comfortable</button>
+                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_density']) ? $_SESSION['ui_density'] : 'comfortable') == 'compact') echo ' active'; ?>" data-pref-key="density" data-pref-value="compact">Compact</button>
+                                    </div>
+                                </div>
+                            </li>
                             <?php if ($show_user_menu_notifications): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('bookmarks.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-bookmark"></i></span><span class="dropdown-item-text"><?php echo __('nav.bookmarks'); ?></span></a></li>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('notifications.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-bell"></i></span><span class="dropdown-item-text"><?php echo __('nav.notifications'); ?></span></a></li>

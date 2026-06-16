@@ -27,11 +27,15 @@ if (!isset($allowed[$key]) || !in_array($value, $allowed[$key], true)) {
 
 $field = $key === 'theme' ? 'ui_theme' : 'ui_density';
 $sql = 'UPDATE users SET ' . $field . ' = :value, updated_at = CURRENT_TIMESTAMP WHERE id = :id';
-$stmt = $pdo->prepare($sql);
-$stmt->execute(array(
-    'value' => $value,
-    'id' => (int) $_SESSION['user_id'],
-));
+try {
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array(
+        'value' => $value,
+        'id' => (int) $_SESSION['user_id'],
+    ));
+} catch (PDOException $e) {
+    json_error('Preferences storage is not ready. Run database migration first.', 500);
+}
 
 if ($key === 'theme') {
     $_SESSION['ui_theme'] = $value;

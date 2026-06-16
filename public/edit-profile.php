@@ -19,6 +19,7 @@ $bio = '';
 $location = '';
 $website = '';
 $avatar = '';
+$avatar_url_input = '';
 $ui_theme = 'system';
 $ui_density = 'comfortable';
 
@@ -33,6 +34,9 @@ if (isset($user['website'])) {
 }
 if (isset($user['avatar'])) {
     $avatar = $user['avatar'];
+    if (is_external_avatar($avatar)) {
+        $avatar_url_input = $avatar;
+    }
 }
 if (isset($user['ui_theme']) && ($user['ui_theme'] == 'light' || $user['ui_theme'] == 'dark' || $user['ui_theme'] == 'system')) {
     $ui_theme = $user['ui_theme'];
@@ -65,6 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     if (isset($_POST['website'])) {
         $website = trim($_POST['website']);
+    }
+    if (isset($_POST['avatar_url'])) {
+        $avatar_url_input = trim($_POST['avatar_url']);
     }
     if (isset($_POST['ui_theme'])) {
         $ui_theme = trim($_POST['ui_theme']);
@@ -100,6 +107,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($website != '' && !filter_var($website, FILTER_VALIDATE_URL)) {
         $errors[] = 'Website must be a valid URL (include https://).';
     }
+    if ($avatar_url_input != '') {
+        $safe_avatar_url = safe_http_href($avatar_url_input);
+        if ($safe_avatar_url == '') {
+            $errors[] = 'Profile photo link must be a valid http/https URL.';
+        } else {
+            $avatar_url_input = $safe_avatar_url;
+        }
+    }
     if ($ui_theme != 'system' && $ui_theme != 'light' && $ui_theme != 'dark') {
         $errors[] = 'Theme preference is invalid.';
     }
@@ -132,11 +147,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $new_avatar = $avatar;
     if (count($errors) == 0) {
-        if (isset($_POST['remove_avatar']) && $_POST['remove_avatar'] == '1') {
+        $has_upload = isset($_FILES['avatar']) && upload_file_selected($_FILES['avatar']);
+        $has_url = ($avatar_url_input != '');
+        if ($has_upload && $has_url) {
+            $errors[] = 'Choose one avatar source: upload from device OR photo link.';
+        }
+    }
+
+    if (count($errors) == 0) {
+        if (isset($_POST['remove_avatar']) && $_POST['remove_avatar'] == '1' && !$has_upload && !$has_url) {
             if ($avatar != '') {
-                delete_upload($avatar, 'avatars');
+                if (!is_external_avatar($avatar)) {
+                    delete_upload($avatar, 'avatars');
+                }
             }
             $new_avatar = '';
+        } elseif ($has_url) {
+            if ($avatar != '' && !is_external_avatar($avatar)) {
+                delete_upload($avatar, 'avatars');
+            }
+            $new_avatar = $avatar_url_input;
         } elseif (isset($_FILES['avatar'])) {
             $up = handle_avatar_upload($_FILES['avatar'], $avatar);
             if ($up['ok'] == false) {
@@ -200,26 +230,6 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <p class="text-secondary small mb-0">Update your account details and public profile</p>
                 </div>
 
-                <h5 class="text-white mb-3">Preferences</h5>
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label form-label-custom">Theme Preference</label>
-                        <select name="ui_theme" class="form-select form-control-custom">
-                            <option value="system" <?php if ($ui_theme == 'system') echo 'selected'; ?>>System default</option>
-                            <option value="dark" <?php if ($ui_theme == 'dark') echo 'selected'; ?>>Dark</option>
-                            <option value="light" <?php if ($ui_theme == 'light') echo 'selected'; ?>>Light</option>
-                        </select>
-                        <div class="form-text text-secondary small">If you use navbar toggle, it can override this on this device.</div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label form-label-custom">Layout Density</label>
-                        <select name="ui_density" class="form-select form-control-custom">
-                            <option value="comfortable" <?php if ($ui_density == 'comfortable') echo 'selected'; ?>>Comfortable</option>
-                            <option value="compact" <?php if ($ui_density == 'compact') echo 'selected'; ?>>Compact</option>
-                        </select>
-                        <div class="form-text text-secondary small">Compact mode reduces spacing to fit more content.</div>
-                    </div>
-                </div>
                 <a href="<?php echo app_url('profile.php'); ?>" class="btn btn-outline-custom btn-sm">Back to Profile</a>
             </div>
 
@@ -302,6 +312,11 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                             <input type="file" name="avatar" id="avatar_input" class="file-upload-input" accept="image/*">
                         </div>
                         <div class="form-text text-secondary small">JPG, PNG, WEBP, or GIF. Max 2MB.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label form-label-custom">Or Photo Link (URL)</label>
+                        <input type="url" name="avatar_url" class="form-control form-control-custom" placeholder="https://example.com/avatar.jpg" value="<?php echo htmlspecialchars($avatar_url_input); ?>">
+                        <div class="form-text text-secondary small">Use a direct image URL (http/https). Leave empty if uploading from your device.</div>
                         <?php if ($avatar != ''): ?>
                         <div class="form-check mt-2">
                             <input class="form-check-input" type="checkbox" name="remove_avatar" value="1" id="remove_avatar">
