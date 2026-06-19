@@ -1,11 +1,9 @@
-# Render Blueprint — Villages Connection
+# Render Blueprint — Villages Connection (free web + Supabase)
+# Dashboard: New → Blueprint → connect GitHub repo
 # Docs: https://render.com/docs/blueprint-spec
 #
-# Option A (recommended if you already use Supabase): deploy web service only.
-#   - Comment out the `databases` block below.
-#   - Set DB_* env vars in the Render dashboard (Supabase pooler URL).
-#
-# Option B: use Render PostgreSQL — uncomment `databases` and wire DATABASE_URL.
+# Database: use Supabase (free) — enter DB_* secrets when Blueprint prompts.
+# Uploads: use Cloudinary (free tier has no persistent disk).
 
 services:
   - type: web
@@ -14,7 +12,7 @@ services:
     dockerfilePath: ./Dockerfile.prod
     plan: free
     region: singapore
-    healthCheckPath: /
+    healthCheckPath: /health.php
     envVars:
       - key: APP_NAME
         value: Village Connect
@@ -32,7 +30,6 @@ services:
         value: true
       - key: RATE_LIMIT_DRIVER
         value: database
-      # --- Supabase (set in dashboard) ---
       - key: DB_HOST
         sync: false
       - key: DB_PORT
@@ -45,7 +42,6 @@ services:
         sync: false
       - key: DB_SSLMODE
         value: require
-      # --- Mail ---
       - key: MAIL_HOST
         sync: false
       - key: MAIL_PORT
@@ -62,7 +58,6 @@ services:
         value: Village Connect
       - key: SITE_CONTACT_EMAIL
         sync: false
-      # --- OAuth (optional) ---
       - key: OAUTH_BASE_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
@@ -73,7 +68,6 @@ services:
         sync: false
       - key: FACEBOOK_APP_SECRET
         sync: false
-      # --- Cloudinary (recommended for media) ---
       - key: CLOUDINARY_URL
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
@@ -84,14 +78,3 @@ services:
         sync: false
       - key: CLOUDINARY_FOLDER
         value: village-connect
-    disk:
-      name: vc-uploads
-      mountPath: /var/www/html/public/uploads
-      sizeGB: 1
-
-# Uncomment for Render-hosted Postgres instead of Supabase:
-# databases:
-#   - name: villages-connection-db
-#     plan: free
-#     databaseName: project_cms
-#     user: villages_connection

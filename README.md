@@ -165,85 +165,86 @@ docker compose exec -T app vendor/bin/phpunit
 
 ---
 
-## Deploy free (MVP / portfolio)
+## Deploy on Render (free)
 
-Recommended stack:
+Stack:
 
 ```text
-GitHub → Koyeb (Dockerfile.prod) → Neon or Supabase (PostgreSQL) → Cloudinary (images)
+GitHub → Render (Dockerfile.prod) → Supabase (DB) → Cloudinary (images)
 ```
 
-| Platform | Free sleep? | Cold start | Docker PHP | Persistent disk |
-|----------|-------------|------------|------------|-----------------|
-| **Koyeb** ⭐ | 1 hour idle | ~1–5s | ✅ | ❌ (use Cloudinary) |
-| Render | 15 min idle | ~30s | ✅ | ✅ (paid/starter) |
-| Vercel | No | ~250ms | ⚠️ limited | ❌ |
+Repo: https://github.com/Mao-SokHun/Villages-Connection
+
+| Item | Value |
+|------|-------|
+| Cost | **$0** (Render free web service) |
+| Database | **Supabase** (you already have this) |
+| Images | **Cloudinary** (required — free tier has no persistent disk) |
+| Sleep | After **15 min** idle; first visit ~**30s** (normal on free) |
+
+### Step 1 — Render Blueprint
+
+1. Go to https://dashboard.render.com
+2. **New** → **Blueprint**
+3. Connect GitHub → repo **`Mao-SokHun/Villages-Connection`**
+4. Render reads `render.yaml` automatically
+5. When prompted, enter **secret** env vars (from your local `.env`):
+
+| Variable | Example |
+|----------|---------|
+| `APP_URL` | `https://villages-connection.onrender.com` *(update after first deploy)* |
+| `DB_HOST` | `aws-1-ap-southeast-1.pooler.supabase.com` |
+| `DB_DATABASE` | `postgres` |
+| `DB_USERNAME` | `postgres.xxxxx` |
+| `DB_PASSWORD` | your Supabase password |
+| `MAIL_*` | Gmail SMTP |
+| `CLOUDINARY_*` | your Cloudinary keys |
+| `OAUTH_BASE_URL` | same as `APP_URL` |
+| `GOOGLE_CLIENT_ID` / `SECRET` | ... |
+| `FACEBOOK_APP_ID` / `SECRET` | ... |
+
+6. Click **Apply** / **Deploy Blueprint**
+
+### Step 2 — After deploy
+
+1. Copy your Render URL (e.g. `https://villages-connection-xxxx.onrender.com`)
+2. **Environment** → set `APP_URL` and `OAUTH_BASE_URL` to that URL → **Save & redeploy**
+3. Update **Google / Facebook** OAuth redirect URLs:
+   - `https://YOUR-APP.onrender.com/auth/google-callback.php`
+   - `https://YOUR-APP.onrender.com/auth/facebook-callback.php`
+
+### Step 3 — Test
+
+- Health: `https://YOUR-APP.onrender.com/health.php` → `ok`
+- Home: `https://YOUR-APP.onrender.com`
+- Login: `admin@admin.com` / `admin123` *(change before public launch)*
+
+Migrations run automatically when the container starts.
+
+### Manual deploy (without Blueprint)
+
+1. **New** → **Web Service** → connect GitHub
+2. **Runtime:** Docker
+3. **Dockerfile path:** `Dockerfile.prod`
+4. **Plan:** Free
+5. Add the same env vars as above
+
+### Free tier notes
+
+- Service **sleeps** after 15 minutes — wait ~30s on first load after idle
+- **No disk** for uploads — use **Cloudinary** for images
+- Upgrade to **Starter ($7/mo)** later if you want no sleep
 
 ---
 
-## Koyeb (recommended)
+## Other hosts (optional)
 
-[Koyeb](https://www.koyeb.com) + external Postgres (Neon or Supabase) + Cloudinary.
+<details>
+<summary>Oracle Cloud Always Free (always on, $0 VM)</summary>
 
-### 1. Database (pick one)
+See `scripts/oracle-deploy.sh` and `docker-compose.prod.yml` if you move off Render later.
 
-- **[Neon](https://neon.tech)** — free PostgreSQL, copy `DATABASE_URL` or `DB_*` vars
-- **Supabase** — you already use this; keep the same pooler credentials
-
-Run migrations once from your PC:
-
-```bash
-php database/migrate.php
-```
-
-### 2. Deploy on Koyeb
-
-1. Push repo to GitHub
-2. [Koyeb Dashboard](https://app.koyeb.com) → **Create Web Service** → **GitHub**
-3. Settings:
-   - **Builder:** Dockerfile
-   - **Dockerfile:** `Dockerfile.prod`
-   - **Port:** `8000` (HTTP)
-   - **Route:** `/` → port `8000`
-   - **Instance:** Free (Frankfurt or Washington)
-4. **Environment variables** (same as `.env.example`):
-
-| Key | Value |
-|-----|-------|
-| `PORT` | `8000` |
-| `APP_URL` | `https://your-app.koyeb.app` |
-| `TRUST_PROXY` | `true` |
-| `DB_*` or `DATABASE_URL` | Neon / Supabase connection |
-| `CLOUDINARY_*` | required on free tier (no persistent disk) |
-| `MAIL_*`, OAuth keys | your values |
-
-5. Deploy — migrations run on each start (`docker/prod/start.sh`)
-
-### CLI (optional)
-
-```bash
-koyeb app init villages-connection \
-  --git github.com/YOUR_USER/Viilages_Connection \
-  --git-branch main \
-  --git-builder docker \
-  --dockerfile Dockerfile.prod \
-  --ports 8000:http \
-  --routes /:8000 \
-  --env PORT=8000 \
-  --env TRUST_PROXY=true
-```
-
-Then add secrets in the Koyeb dashboard (`DB_*`, `MAIL_*`, etc.).
-
----
-
-## Render
-
-[Render](https://render.com) also works with `Dockerfile.prod` + `render.yaml` Blueprint.
-
-⚠️ **Free tier sleeps after 15 minutes** — first request can take ~30s. Use **Starter ($7/mo)** to avoid sleep, or prefer **Koyeb** for free MVP.
-
-Migrations run automatically on container start (`docker/prod/start.sh`).
+</details>
 
 ---
 
