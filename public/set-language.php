@@ -2,16 +2,23 @@
 
 require_once dirname(__DIR__) . '/bootstrap.php';
 
-$lang = 'km';
+$lang = 'en';
 if (isset($_GET['lang'])) {
     $lang = trim($_GET['lang']);
 }
 if (!in_array($lang, supported_locales(), true)) {
-    $lang = 'km';
+    $lang = 'en';
 }
 
 $_SESSION['locale'] = $lang;
-setcookie('vc_locale', $lang, time() + (86400 * 365), '/', '', false, true);
+$secure = request_is_https();
+setcookie('vc_locale', $lang, array(
+    'expires' => time() + (86400 * 365),
+    'path' => '/',
+    'secure' => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax',
+));
 
 $redirect = safe_redirect_path(isset($_GET['redirect']) ? $_GET['redirect'] : '', 'index.php');
 

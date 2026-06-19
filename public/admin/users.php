@@ -4,6 +4,8 @@ requireAdmin();
 
 $admin_post = admin_post_action();
 if ($admin_post) {
+    app_cache_forget('admin_users_list_default');
+    invalidate_admin_unread_counts_cache();
     if ($admin_post['action'] == 'role' && $admin_post['id'] > 0 && $admin_post['value'] != '') {
         if ($admin_post['value'] == 'admin') {
             $new_role = 'admin';
@@ -52,6 +54,15 @@ if ($admin_post) {
         $pdo->prepare('UPDATE users SET password = :password WHERE id = :id')->execute(array('password' => $hash, 'id' => $admin_post['id']));
         log_activity($pdo, 'user.password_reset', 'User #' . $admin_post['id']);
         setFlashMessage('success', 'Temporary password for user #' . $admin_post['id'] . ': ' . $temp_password);
+        header('Location: users.php');
+        exit;
+    }
+    if ($admin_post['action'] == 'activate' && $admin_post['id'] > 0) {
+        if (activate_user_account($pdo, $admin_post['id'])) {
+            setFlashMessage('success', 'User account reactivated.');
+        } else {
+            setFlashMessage('warning', 'This account is not closed or could not be reactivated.');
+        }
         header('Location: users.php');
         exit;
     }
@@ -118,20 +129,34 @@ if ($list_sort == 'oldest') {
     $list_order = ' ORDER BY post_count DESC, u.name ASC';
 }
 
-try {
-    $sql = "SELECT u.*, COUNT(p.id) FILTER (WHERE p.status != 'Deleted') as post_count
-            FROM users u
-            LEFT JOIN posts p ON p.user_id = u.id" . $list_where . "
-            GROUP BY u.id" . $list_order;
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($list_params);
-    $users = $stmt->fetchAll();
-} catch (PDOException $e) {
-    app_log_error('Admin users query failed: ' . $e->getMessage());
-    die(app_public_error_message('Query error.'));
+$list_has_filters = ($list_search != '' || $list_role != '' || $list_sort != 'newest');
+
+$users = null;
+if (!$list_has_filters) {
+    $cached_users = app_cache_get('admin_users_list_default', 60);
+    if (is_array($cached_users) && isset($cached_users['rows'])) {
+        $users = $cached_users['rows'];
+    }
 }
 
-$list_has_filters = ($list_search != '' || $list_role != '' || $list_sort != 'newest');
+if (!is_array($users)) {
+    try {
+        $sql = "SELECT u.id, u.name, u.email, u.role, u.is_banned, u.banned_reason, u.account_status, u.deleted_at, u.created_at,
+                COUNT(p.id) FILTER (WHERE p.status != 'Deleted') as post_count
+                FROM users u
+                LEFT JOIN posts p ON p.user_id = u.id" . $list_where . "
+                GROUP BY u.id" . $list_order;
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($list_params);
+        $users = $stmt->fetchAll();
+        if (!$list_has_filters) {
+            app_cache_put('admin_users_list_default', array('rows' => $users));
+        }
+    } catch (PDOException $e) {
+        app_log_error('Admin users query failed: ' . $e->getMessage());
+        die(app_public_error_message('Query error.'));
+    }
+}
 
 $page_title = 'Manage Users';
 $admin_active = 'users';
@@ -238,7 +263,9 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                                         <?php else: ?>
                                             <?php render_admin_action_button('users.php', 'role', $u['id'], array('class' => 'btn btn-sm btn-outline-custom text-info py-1 px-2', 'label' => 'Author', 'title' => 'Make author', 'value' => 'author')); ?>
                                         <?php endif; ?>
-                                        <?php if (!user_is_deleted($u)): ?>
+                                        <?php if (user_is_deleted($u)): ?>
+                                            <?php render_admin_action_button('users.php', 'activate', $u['id'], array('class' => 'btn btn-sm btn-outline-custom text-success py-1 px-2', 'label' => 'Activate', 'icon' => 'fa-solid fa-circle-check', 'title' => 'Reactivate account', 'confirm' => 'Reactivate this user account? They will be able to sign in again.')); ?>
+                                        <?php else: ?>
                                         <?php render_admin_action_button('users.php', 'delete', $u['id'], array('class' => 'btn btn-sm btn-outline-custom text-danger py-1 px-2', 'icon' => 'fa-solid fa-trash-can', 'title' => 'Close account', 'confirm' => 'Close this user account? Their data will be kept but hidden.')); ?>
                                         <?php endif; ?>
                                     <?php else: ?>

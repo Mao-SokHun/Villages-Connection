@@ -1,0 +1,39 @@
+# Production web image — nginx + PHP 8.3-FPM (Koyeb, Render, Fly.io, etc.)
+FROM php:8.3-fpm
+
+RUN apt-get update && apt-get install -y \
+    nginx \
+    libpq-dev \
+    libcurl4-openssl-dev \
+    curl \
+    unzip \
+    git \
+    ffmpeg \
+    && docker-php-ext-install pdo pdo_pgsql pgsql curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+COPY composer.json composer.lock* ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+COPY . /var/www/html
+
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/php/production.ini /usr/local/etc/php/conf.d/production.ini
+COPY docker/nginx/snippets/pretty-routes.conf /etc/nginx/snippets/pretty-routes.conf
+COPY docker/prod/nginx.conf /etc/nginx/templates/default.conf
+COPY docker/prod/start.sh /usr/local/bin/start.sh
+
+RUN mkdir -p /var/www/html/public/uploads/avatars /var/www/html/public/uploads/videos \
+    /var/www/html/storage/cache /var/www/html/storage/backups \
+    && chmod +x /usr/local/bin/start.sh \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/public/uploads /var/www/html/storage
+
+EXPOSE 8000
+
+CMD ["/usr/local/bin/start.sh"]

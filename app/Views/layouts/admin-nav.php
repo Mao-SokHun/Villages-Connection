@@ -4,7 +4,7 @@ if (isset($admin_active)) {
     $admin_page = $admin_active;
 }
 
-$admin_counts = array('messages' => 0, 'reports' => 0, 'pending_posts' => 0, 'pending_comments' => 0, 'notifications' => 0);
+$admin_counts = array('messages' => 0, 'reports' => 0, 'incidents' => 0, 'pending_posts' => 0, 'pending_comments' => 0, 'notifications' => 0);
 $author_counts = array('pending_posts' => 0, 'pending_comments' => 0, 'notifications' => 0);
 if (isAdmin() && isset($pdo)) {
     $admin_counts = admin_unread_counts($pdo);
@@ -70,6 +70,13 @@ if (isAdmin() && isset($pdo)) {
         <a href="<?php echo admin_area_url('reports.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'reports') echo 'active'; ?>" data-admin-tab="reports">
             <i class="fa-solid fa-flag"></i><span>Reports</span>
             <span class="dash-badge" data-admin-badge="reports"<?php if ($admin_counts['reports'] <= 0) echo ' hidden'; ?>><?php echo (int) $admin_counts['reports']; ?></span>
+        </a>
+        <a href="<?php echo admin_area_url('incidents.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'incidents') echo 'active'; ?>" data-admin-tab="incidents">
+            <i class="fa-solid fa-triangle-exclamation"></i><span>Incidents</span>
+            <span class="dash-badge" data-admin-badge="incidents"<?php if ($admin_counts['incidents'] <= 0) echo ' hidden'; ?>><?php echo (int) $admin_counts['incidents']; ?></span>
+        </a>
+        <a href="<?php echo admin_area_url('challenges.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'challenges') echo 'active'; ?>">
+            <i class="fa-solid fa-trophy"></i><span>Challenges</span>
         </a>
         <a href="<?php echo admin_area_url('messages.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'messages') echo 'active'; ?><?php if ($admin_counts['messages'] > 0) echo ' has-unread'; ?>" data-admin-tab="messages">
             <i class="fa-solid fa-envelope"></i><span>Messages</span>

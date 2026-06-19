@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 $selected_id = 0;

@@ -3,14 +3,12 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once APP_PATH . '/Core/oauth.php';
 
 if (isLoggedIn()) {
-    header('Location: ../index.php');
-    exit;
+    redirect_to('index.php');
 }
 
 if (!oauth_is_configured('facebook')) {
     setFlashMessage('warning', 'Facebook login is not configured yet.');
-    header('Location: ../login.php');
-    exit;
+    redirect_to('login.php');
 }
 
 header('Location: ' . facebook_auth_url());

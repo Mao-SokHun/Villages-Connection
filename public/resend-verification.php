@@ -60,11 +60,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             <?php else: ?>
 
             <?php if (count($errors) > 0): ?>
-            <div class="alert alert-danger">
-                <?php foreach ($errors as $err): ?>
-                <div><?php echo htmlspecialchars($err); ?></div>
-                <?php endforeach; ?>
-            </div>
+            <?php render_user_alerts($errors, 'danger'); ?>
             <?php endif; ?>
 
             <p class="text-secondary"><?php echo __('auth.verify_email_first'); ?></p>

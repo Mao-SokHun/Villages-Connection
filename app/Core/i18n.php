@@ -2,7 +2,7 @@
 
 function supported_locales()
 {
-    return array('en');
+    return array('en', 'km');
 }
 
 function init_locale()
@@ -11,7 +11,14 @@ function init_locale()
         $lang = trim($_GET['lang']);
         if (in_array($lang, supported_locales(), true)) {
             $_SESSION['locale'] = $lang;
-            setcookie('vc_locale', $lang, time() + (86400 * 365), '/', '', false, true);
+            $secure = function_exists('request_is_https') ? request_is_https() : false;
+            setcookie('vc_locale', $lang, array(
+                'expires' => time() + (86400 * 365),
+                'path' => '/',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ));
         }
     }
 
@@ -34,10 +41,80 @@ function current_locale()
 
 function locale_label($locale)
 {
-    if ($locale == 'en') {
-        return 'English';
+    if ($locale == 'km') {
+        return __('lang.km');
     }
-    return 'English';
+    if ($locale == 'en') {
+        return __('lang.en');
+    }
+    return __('lang.en');
+}
+
+function locale_short_label($locale)
+{
+    if ($locale == 'km') {
+        return __('lang.km_short');
+    }
+    return __('lang.en_short');
+}
+
+function language_switch_redirect_path()
+{
+    $path = request_uri_path();
+    $query = '';
+    if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
+        $query = '?' . $_SERVER['QUERY_STRING'];
+    }
+
+    foreach (route_registry_public() as $script => $pretty) {
+        if ($path === $pretty) {
+            return $script . $query;
+        }
+    }
+
+    foreach (route_registry_admin() as $script => $pretty) {
+        if ($path === $pretty) {
+            return 'admin/' . $script . $query;
+        }
+    }
+
+    if (preg_match('#^/post/([^/]+)/?$#', $path, $matches)) {
+        $redirect = 'post.php?slug=' . rawurlencode(rawurldecode($matches[1]));
+        if ($query != '') {
+            $redirect .= '&' . ltrim($query, '?');
+        }
+        return $redirect;
+    }
+
+    if (preg_match('#^/profile/([0-9]+)/?$#', $path, $matches)) {
+        $redirect = 'profile.php?id=' . (int) $matches[1];
+        if ($query != '') {
+            $redirect .= '&' . ltrim($query, '?');
+        }
+        return $redirect;
+    }
+
+    if ($path === '/') {
+        return 'index.php' . $query;
+    }
+
+    $fallback = ltrim($path, '/') . $query;
+    if ($fallback == '' || $fallback == '/') {
+        return 'index.php';
+    }
+
+    return $fallback;
+}
+
+function language_switch_url($locale)
+{
+    $locale = trim((string) $locale);
+    if (!in_array($locale, supported_locales(), true)) {
+        $locale = 'en';
+    }
+
+    $redirect = language_switch_redirect_path();
+    return app_url('set-language.php') . '?lang=' . urlencode($locale) . '&redirect=' . urlencode($redirect);
 }
 
 function load_translations($locale)

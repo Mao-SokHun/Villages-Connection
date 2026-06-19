@@ -16,6 +16,10 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "vercel": [
+            "@php -v",
+            "@composer install --no-dev --optimize-autoloader"
+        ]
     }
 }

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Connect - Home Feed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e0e0ff",
+                    "secondary-fixed-dim": "#c4c7c9",
+                    "primary-fixed": "#e1e0ff",
+                    "on-background": "#0b1c30",
+                    "surface-container-highest": "#d3e4fe",
+                    "outline-variant": "#c7c4d7",
+                    "secondary": "#5c5f61",
+                    "outline": "#767586",
+                    "primary": "#4648d4",
+                    "tertiary-container": "#606ad4",
+                    "background": "#f8f9ff",
+                    "surface-tint": "#494bd6",
+                    "on-tertiary-container": "#fffbff",
+                    "on-secondary-fixed-variant": "#444749",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#2f3aa3",
+                    "on-primary-fixed": "#07006c",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-dim": "#cbdbf5",
+                    "error-container": "#ffdad6",
+                    "inverse-surface": "#213145",
+                    "surface-container": "#e5eeff",
+                    "primary-container": "#6063ee",
+                    "on-primary-container": "#fffbff",
+                    "surface-container-low": "#eff4ff",
+                    "on-secondary-container": "#626567",
+                    "secondary-container": "#e0e3e5",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface-bright": "#f8f9ff",
+                    "on-tertiary-fixed": "#000767",
+                    "inverse-primary": "#c0c1ff",
+                    "on-surface": "#0b1c30",
+                    "on-secondary-fixed": "#191c1e",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#d3e4fe",
+                    "primary-fixed-dim": "#c0c1ff",
+                    "tertiary-fixed-dim": "#bdc2ff",
+                    "on-error": "#ffffff",
+                    "surface": "#f8f9ff",
+                    "on-surface-variant": "#464554",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed-variant": "#2f2ebe",
+                    "secondary-fixed": "#e0e3e5",
+                    "surface-container-high": "#dce9ff",
+                    "tertiary": "#4651b9",
+                    "on-error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "base": "4px",
+                    "xl": "32px",
+                    "xs": "8px",
+                    "sm": "12px",
+                    "lg": "24px",
+                    "gutter": "16px",
+                    "margin-desktop": "40px",
+                    "margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Outfit"],
+                    "label-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Outfit"],
+                    "body-lg": ["Inter"],
+                    "headline-lg-mobile": ["Outfit"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #f8f9ff;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.08);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-20 font-body-md">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 right-0 h-14 flex items-center justify-between px-margin-mobile bg-surface/70 backdrop-blur-xl z-50">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="hub">hub</span>
+<h1 class="font-headline-md text-headline-md-mobile font-bold text-primary">Connect</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-all duration-200">
+<span class="material-symbols-outlined text-primary" data-icon="send">send</span>
+</button>
+</header>
+<!-- Main Feed Content -->
+<main class="pt-16 px-margin-mobile max-w-2xl mx-auto space-y-md">
+<!-- Stories Row (Bonus Layout Detail) -->
+<div class="flex overflow-x-auto hide-scrollbar gap-md py-base">
+<div class="flex flex-col items-center gap-xs flex-shrink-0">
+<div class="p-[2px] rounded-full bg-gradient-to-tr from-primary to-tertiary">
+<img class="w-14 h-14 rounded-full border-2 border-white object-cover" data-alt="A professional close-up portrait of a diverse creative professional with a friendly smile, set against a soft-focus modern studio background with warm, cinematic lighting. The aesthetic is clean and premium, consistent with a high-energy social platform's light-mode interface, emphasizing clarity and human connection through vibrant yet natural skin tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuABFuWuo4kkVFX8mXxkT17zZjkvjYrge565nWRUzDge-2_x-MUsSgAM12a-DeIEe8lhPOFHxJh2_3_aF3lF7Jbvdtc6CBGsYtmKvH0tmwO7jwK4NJG7-hrLc6inPNOa3xZiuI_wZrlptinKDaIPfV3Ntc7XubVNz6XlQjHPpqQYAqlYrZpkuVzxquhCfSuH_5jBawKjQXURKyF41c9WnvT2tc4dCcR6St_fi2tsiG6C7qo0-kakMoadSJ3VxpHBDYasu3rUYm0"/>
+</div>
+<span class="font-label-md text-label-md text-secondary">You</span>
+</div>
+<!-- Repeat Stories -->
+<div class="flex flex-col items-center gap-xs flex-shrink-0">
+<div class="p-[2px] rounded-full bg-gradient-to-tr from-primary to-tertiary">
+<img class="w-14 h-14 rounded-full border-2 border-white object-cover" data-alt="A vibrant and energetic portrait of a young woman with curly hair, wearing stylish glasses, looking into the camera with an authentic joyful expression. The lighting is bright and cheerful, mimicking natural daylight in a contemporary urban loft. The composition is clean and centered, designed for a modern social media avatar with a high-quality, polished visual style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqs9kDjqaJz_PetAuvTVyh5PK00P49Reiiuk3jY3lmVphtFfrcdqJytqbnYI7DCT2Ng7KvY0u22ElNBlprbgB8mJA6UIqhBkew2Nx2AiWwBJ_luO8b9Aywo7yyhBpq6PW2Xw88BCytRfVnIL8grJo8plm21pHkBKBRvV5T_5clDTGgAhyMh-sYcZiO6yW2Q7xFRgvoFfHadNAa7Gah8oaGNQt912spAkJ7U2KgVNEQY7Fa-jPE20D6DN3GxNe-RLH-HhYJvIg"/>
+</div>
+<span class="font-label-md text-label-md text-secondary">alex_v</span>
+</div>
+<div class="flex flex-col items-center gap-xs flex-shrink-0">
+<div class="p-[2px] rounded-full bg-surface-container-highest">
+<img class="w-14 h-14 rounded-full border-2 border-white object-cover" data-alt="A stylish profile picture of a person with a creative, modern look, featuring soft pastel accents in their clothing. The background is a minimalist architectural space with clean lines and soft shadows, creating a sophisticated and professional mood. The lighting is diffused and flattering, emphasizing a high-end social media aesthetic that feels airy and premium." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9KeVONnbH6sTNHwClOnjyeVyCI9QWUDbdE_aHUt7jKQAY72tT2gyzsWPXvHkx-Cdv_FXo2t6p3VwrNooDt8MO9BoYpw-94raIOaRwUd-BKSdm6nojLl9nR2Yr_DPF-kJRv9CCx8YDTj54nLJqm79Wv-Nm7abUjDROnxZISitepSN5mL-HiRihkhGZeF0H6nuWLYEcHOinS2a39yfF70Ms6I1OBo2l8uEHkrsPrUXet37SC5lJG4bjanwYPvcmcYWo0FMs6bo"/>
+</div>
+<span class="font-label-md text-label-md text-secondary">design.co</span>
+</div>
+<div class="flex flex-col items-center gap-xs flex-shrink-0">
+<div class="p-[2px] rounded-full bg-gradient-to-tr from-primary to-tertiary">
+<img class="w-14 h-14 rounded-full border-2 border-white object-cover" data-alt="An artistic avatar of a person with striking features, captured in a moment of creative reflection. The setting is a bright, plant-filled workspace with modern furniture and soft morning light streaming through large windows. The overall atmosphere is optimistic and high-energy, perfectly aligned with a connected digital ecosystem for creatives." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbyMURgt-kEz4qNaIl9N2Sv1pgrq4nTCkRglDZ2HRq_kOFcTDCXFyhSLxXahnOroSVM5lSN_CrNZX4QecyMTGJrvj-bYxpn2pQd1qNrQA7T40pKik7b1JJH6uqLYfpVfo0fykLf2mzTMBWU26H3VWs_1Vhpy4BmwSinpiCK--2gTPksSYDlj5YBFI8SqcKj6umbimRgO-WZsyd26wJUrDAqb7q8rwkpDmtuLkFLrjvpMB9YEL1wjRaEC-oSTxa44IlTrWIpMY"/>
+</div>
+<span class="font-label-md text-label-md text-secondary">m_jordan</span>
+</div>
+</div>
+<!-- Post Card 1 -->
+<article class="glass-card rounded-xl overflow-hidden transition-all duration-300">
+<!-- User Info -->
+<div class="p-md flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<img class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A small circular avatar of a professional photographer, looking sharp and focused. The background is a blurred cityscape during the golden hour, providing a warm and inviting light. The image quality is crisp and high-definition, fitting a premium social interface designed for content discovery and professional networking." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5ouU0PGHaocCYMtJCzVwYfqNCRVoYM0arJrEFVk3atDgZMo1lTleilG3pkaUe_p2iTb9QwWIIYni0hJ7KjxUrA6aZ3f9k1i4HEImxA-XMGOvAO9nKijUaggpH5MJPO925fYcF_C452pv9AxicaJDQD8OYpbpPaygAyD0bpqlyhNel84WnQQPJk1a6gJVvcbgJHPIcl0qP7Usf2EOt5zAaZp64zS7ok0anvUPnpL1RwlhN6KGd2HM5mHBZj7D4EZALNFBCtD4"/>
+<div>
+<p class="font-headline-md text-[14px] leading-none text-on-background">elara_vision</p>
+<p class="font-body-sm text-[12px] text-secondary">San Francisco, CA</p>
+</div>
+</div>
+<button class="material-symbols-outlined text-secondary" data-icon="more_horiz">more_horiz</button>
+</div>
+<!-- Content Image -->
+<div class="relative w-full aspect-square bg-surface-container-low">
+<img class="w-full h-full object-cover" data-alt="A breathtaking landscape photograph of a futuristic urban garden, where lush green vegetation intertwined with glowing fiber-optic light installations under a twilight sky. The scene is shot with a wide-angle lens, capturing the vibrant contrast between nature and high-tech architecture. The mood is tranquil yet awe-inspiring, with a soft indigo and emerald color palette that feels modern and optimistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9FY9SykKAEQFuyVSb6CXcnBmpcWKlO1jTnglhFrnaNi1UcqB91WfjYLaQBRV6y6BN4fFIK7Zzn0KKIkDFNwDHx54bc0uCKJTzHeQa1R3dnr7RNgrNp2u9B9DvikEWmHce2L8qZmxSTBdjylA1gvFmHCo4yYgDz41iTNkgkXwEf3dXFwGzcU_C8CJ1rroI-NxnLw50MTOq5IA139aAdM8fzZ_hMRfCf_BPEyN2jMOPVNEFQrbEhRbfwYCgccSLpQ77pS5Vqhc"/>
+</div>
+<!-- Interactions -->
+<div class="p-md space-y-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-lg">
+<button class="flex items-center gap-xs group active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary group-hover:fill-current" data-icon="favorite">favorite</span>
+<span class="font-label-md text-secondary">1.2k</span>
+</button>
+<button class="flex items-center gap-xs group active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-md text-secondary">48</span>
+</button>
+<button class="flex items-center gap-xs group active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="share">share</span>
+</button>
+</div>
+<button class="material-symbols-outlined text-primary" data-icon="bookmark">bookmark</button>
+</div>
+<!-- Caption -->
+<div class="space-y-base">
+<p class="font-body-sm text-on-background">
+<span class="font-bold">elara_vision</span> Exploring the intersection of ecology and technology in the heart of the city. What a view! 🌿✨
+                    </p>
+<button class="font-label-md text-primary text-[12px]">View all 48 comments</button>
+<p class="font-label-md text-secondary uppercase text-[10px] tracking-wider">2 hours ago</p>
+</div>
+</div>
+</article>
+<!-- Post Card 2 -->
+<article class="glass-card rounded-xl overflow-hidden transition-all duration-300">
+<!-- User Info -->
+<div class="p-md flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<img class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A close-up portrait of a digital artist with a cool, minimalist aesthetic. The lighting is soft and directional, creating a sense of depth and focus. The background is a clean, neutral gray that makes the subject's features and vibrant clothing pop. This image represents the high-quality user base of the Connect social platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbw8JmRIv7v3YuxOmCXaTYg5hsUoOEQ77Obi9lTiwOYaNQUKmceZ2cEZI3osJd_JG1XU5rXrL7XW-r-tlGjtSTviyneR-I5ToSp0RjPrWqc8R1xssu1OVlzAds9NRG7BhKZXqZR-xuD9PCQ_wToOW0KXYIaqTJ5QuxELfRcB7UXdBQEVDBUQun57W5ckKassIDV7rOcpCDavhxybCCLv0U2y-8EV2MuvG0FRNFEH3oh6sor6TMIdOjmDB6VTqHn9oKs0Gum-k"/>
+<div>
+<p class="font-headline-md text-[14px] leading-none text-on-background">nexus_creations</p>
+<p class="font-body-sm text-[12px] text-secondary">Global Nomad</p>
+</div>
+</div>
+<button class="material-symbols-outlined text-secondary" data-icon="more_horiz">more_horiz</button>
+</div>
+<!-- Content Image (Using Animation Placeholder) -->
+<div class="relative w-full aspect-video bg-on-background overflow-hidden">
+
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<p class="font-headline-lg text-white/50 text-center px-lg">Digital Fluidity</p>
+</div>
+</div>
+<!-- Interactions -->
+<div class="p-md space-y-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-lg">
+<button class="flex items-center gap-xs group active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="favorite">favorite</span>
+<span class="font-label-md text-secondary">854</span>
+</button>
+<button class="flex items-center gap-xs group active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-md text-secondary">12</span>
+</button>
+<button class="flex items-center gap-xs group active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="share">share</span>
+</button>
+</div>
+<button class="material-symbols-outlined text-primary" data-icon="bookmark">bookmark</button>
+</div>
+<div class="space-y-base">
+<p class="font-body-sm text-on-background">
+<span class="font-bold">nexus_creations</span> New generative piece dropping tonight. It's all about movement and light.
+                    </p>
+<p class="font-label-md text-secondary uppercase text-[10px] tracking-wider">5 hours ago</p>
+</div>
+</div>
+</article>
+<!-- Post Card 3 -->
+<article class="glass-card rounded-xl overflow-hidden transition-all duration-300">
+<div class="p-md flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<img class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A vibrant headshot of a travel blogger with sun-kissed skin and an adventurous spirit. The background is a slightly out-of-focus tropical beach with turquoise water and white sand, illuminated by bright, clear sunlight. The aesthetic is warm, inviting, and high-energy, perfect for a modern social feed." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA49yEWvY52j8OuX4-IlSs2HOAPKjRM8PkkdV0SXM-cqHhhiMVK65-PMMjZrazyodidxF7kfiaK2Bt8CDUeLJYMP2VIfTEmJ8OHPDF0t0JnfuYqOC3QyJfYsGLhm1drkNtagWhAk0m8CLXvIZ7vvh53_L0wneffxKLKDrQmBFrjQJXgHBjFZVpJb1LJPw7OUVsLMzfCqsyTbjDNYYmP-VQPpm7CJlweLIOQpuLrU4_mqVlvLB_eu7ScVInKPG5BwI0dQxLneH8"/>
+<div>
+<p class="font-headline-md text-[14px] leading-none text-on-background">wander_will</p>
+<p class="font-body-sm text-[12px] text-secondary">Bali, Indonesia</p>
+</div>
+</div>
+<button class="material-symbols-outlined text-secondary" data-icon="more_horiz">more_horiz</button>
+</div>
+<div class="relative w-full aspect-square bg-surface-container-low">
+<img class="w-full h-full object-cover" data-alt="An atmospheric photograph of a hidden waterfall in a tropical jungle, with sunlight filtering through a thick canopy of oversized palm leaves. The water is crystalline and forms a serene pool at the base. The lighting is dramatic and moody, with high contrast between deep shadows and bright sunbeams, creating a lush, cinematic feel for a premium content feed." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEL3ixYKKTZELmJGFhDFi6fr6IxWreA2ZWwaq4GlzE-r8JQtcFyjdYwo-ETHU-FkVBRzDoTRd0TZJrEuCsVhmXyOr8lEO2ams6HEIusr_MI9_6c8yghlEOaMPL4Qcac62hR5im7NqAm5-NlPPp4RNCWg17bmlXbVCeOnvG-2_KbtlMxbedsltT5rA8NMhE0XLUZj5jVyGyWKFfn-vpugdGTKCn7YF1D6j6-WuSY9zFD5JQpPe7uiZ_y9Ym9Fnr6wxsdN5ZDK4"/>
+</div>
+<div class="p-md space-y-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-lg">
+<button class="flex items-center gap-xs group">
+<span class="material-symbols-outlined text-primary" data-icon="favorite">favorite</span>
+<span class="font-label-md text-secondary">3.4k</span>
+</button>
+<button class="flex items-center gap-xs group">
+<span class="material-symbols-outlined text-primary" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-md text-secondary">102</span>
+</button>
+<button class="flex items-center gap-xs group">
+<span class="material-symbols-outlined text-primary" data-icon="share">share</span>
+</button>
+</div>
+<button class="material-symbols-outlined text-primary" data-icon="bookmark">bookmark</button>
+</div>
+<div class="space-y-base">
+<p class="font-body-sm text-on-background">
+<span class="font-bold">wander_will</span> Found this secret spot after a 2-hour hike. Totally worth the sore legs! 🌴💦
+                    </p>
+<p class="font-label-md text-secondary uppercase text-[10px] tracking-wider">Yesterday</p>
+</div>
+</div>
+</article>
+</main>
+<!-- FAB for Create (Contextual for Home Feed) -->
+<button class="fixed bottom-20 right-6 w-14 h-14 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center z-50 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-3xl" data-icon="add">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 right-0 h-16 flex justify-around items-center px-margin-mobile pb-safe bg-white/70 backdrop-blur-xl shadow-[0_-8px_30px_rgba(99,102,241,0.08)] z-50">
+<button class="flex flex-col items-center justify-center text-primary font-bold transition-transform duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:bg-primary-container/10 transition-colors duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md text-label-md mt-1">Search</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:bg-primary-container/10 transition-colors duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+<span class="font-label-md text-label-md mt-1">Create</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:bg-primary-container/10 transition-colors duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-label-md text-label-md mt-1">Activity</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:bg-primary-container/10 transition-colors duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Profile</span>
+</button>
+</nav>
+<script>
+        // Simple micro-interactions
+        document.querySelectorAll('article').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Like button toggle simulation
+        document.querySelectorAll('[data-icon="favorite"]').forEach(btn => {
+            btn.parentElement.addEventListener('click', function() {
+                const icon = this.querySelector('.material-symbols-outlined');
+                const count = this.querySelector('.font-label-md');
+                const isLiked = icon.style.fontVariationSettings.includes("'FILL' 1");
+                
+                if (isLiked) {
+                    icon.style.fontVariationSettings = "'FILL' 0";
+                    icon.classList.remove('text-red-500');
+                    icon.classList.add('text-primary');
+                } else {
+                    icon.style.fontVariationSettings = "'FILL' 1";
+                    icon.classList.add('text-red-500');
+                    icon.classList.remove('text-primary');
+                }
+            });
+        });
+    </script>
+</body></html>

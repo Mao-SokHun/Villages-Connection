@@ -2,11 +2,10 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 $slug = '';
 if (isset($_GET['slug'])) {
-    $slug = trim($_GET['slug']);
+    $slug = trim(rawurldecode((string) $_GET['slug']));
 }
 if ($slug == '') {
-    header('Location: index.php');
-    exit;
+    redirect_to('index.php');
 }
 
 $stmt = $pdo->prepare("SELECT p.*, c.name as category_name, c.slug as category_slug, c.icon as category_icon,
@@ -14,14 +13,14 @@ $stmt = $pdo->prepare("SELECT p.*, c.name as category_name, c.slug as category_s
     FROM posts p
     LEFT JOIN categories c ON p.category_id = c.id
     LEFT JOIN users u ON p.user_id = u.id
-    WHERE p.slug = :slug AND p.status = 'Published'" . sql_hide_inactive_authors('u'));
+    WHERE p.slug = :slug AND p.status = 'Published' AND (p.expires_at IS NULL OR p.expires_at > CURRENT_TIMESTAMP)" . sql_hide_inactive_authors('u'));
 $stmt->execute(array('slug' => $slug));
 $post = $stmt->fetch();
 
 if (!$post) {
-    $page_title = 'Not Found';
+    $page_title = __('post.not_found_title');
     require_once ROOT_PATH . '/app/Views/layouts/header.php';
-    echo '<div class="empty-state glass-panel my-5"><i class="fa-solid fa-file-circle-xmark"></i><h3>Post not found</h3><p>This post may have been removed or is not published yet.</p><a href="index.php" class="btn btn-gradient mt-3">Go Back Home</a></div>';
+    echo '<div class="empty-state glass-panel my-5"><i class="fa-solid fa-file-circle-xmark"></i><h3>' . htmlspecialchars(__('post.not_found_title')) . '</h3><p>' . htmlspecialchars(__('post.not_found_desc')) . '</p><a href="' . htmlspecialchars(app_url('index.php')) . '" class="btn btn-gradient mt-3">' . htmlspecialchars(__('post.go_home')) . '</a></div>';
     require_once ROOT_PATH . '/app/Views/layouts/footer.php';
     exit;
 }
@@ -41,7 +40,7 @@ $comment_errors = array();
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['moderate_comment']) && comments_are_enabled()) {
     require_valid_csrf();
     if (!$is_post_owner && !isAdmin()) {
-        setFlashMessage('danger', 'You cannot moderate comments on this post.');
+        setFlashMessage('danger', __('post.cannot_moderate'));
     } else {
         $moderate_id = 0;
         if (isset($_POST['comment_id'])) {
@@ -51,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['moderate_comment']) &&
         if ($moderate_id > 0 && ($moderate_action == 'approve' || $moderate_action == 'reject')) {
             $result = moderate_post_owner_comment($pdo, $moderate_id, $moderate_action == 'approve' ? 'approved' : 'rejected');
             if ($result['ok']) {
-                setFlashMessage('success', $moderate_action == 'approve' ? 'Comment approved.' : 'Comment rejected.');
+                setFlashMessage('success', $moderate_action == 'approve' ? __('post.comment_approved') : __('post.comment_rejected'));
             } else {
                 setFlashMessage('danger', $result['error']);
             }
@@ -64,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['moderate_comment']) &&
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['comment_content']) && comments_are_enabled()) {
     require_valid_csrf();
     if (!isLoggedIn()) {
-        $comment_errors[] = 'Please sign in to comment.';
+        $comment_errors[] = __('post.sign_in_comment');
     } else {
         $comment_user_id = (int) $_SESSION['user_id'];
         if (!rate_limit_hit('post_comment', 'user:' . $comment_user_id, 15, 300)) {
@@ -84,9 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['comment_content']) && 
         } else {
             log_activity($pdo, 'comment.created', 'Post #' . $post['id']);
             $comment_status = $result['status'];
-            notify_post_author_on_comment($pdo, $post['id'], $_SESSION['user_name'], $slug, $comment_status == 'pending');
+            notify_post_author_on_comment($pdo, $post['id'], $_SESSION['user_name'], $slug, $comment_status == 'pending', (int) $result['id']);
             if ($parent_id > 0 && $comment_status == 'approved') {
-                notify_comment_reply($pdo, $parent_id, $_SESSION['user_name'], $slug);
+                notify_comment_reply($pdo, $parent_id, $_SESSION['user_name'], $slug, $post['title'], (int) $result['id']);
             }
             if ($comment_status == 'pending') {
                 notify_admins_pending_comment($pdo, $post['id'], $_SESSION['user_name']);
@@ -186,12 +185,12 @@ if (isset($post['author_id'])) {
     $author_id = (int) $post['author_id'];
 }
 
-$author_subtitle = 'Community Member';
+$author_subtitle = __('post.community_member');
 if (isset($post['author_role'])) {
     if ($post['author_role'] == 'admin') {
-        $author_subtitle = 'Administrator';
+        $author_subtitle = __('post.administrator');
     } elseif ($post['author_role'] == 'author') {
-        $author_subtitle = 'Author';
+        $author_subtitle = __('common.author');
     }
 }
 if ($author_bio != '') {
@@ -201,7 +200,7 @@ if ($author_bio != '') {
 
 <nav aria-label="breadcrumb" class="mb-4 reveal">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="index.php" class="text-secondary text-decoration-none">Home</a></li>
+        <li class="breadcrumb-item"><a href="<?php echo app_url('index.php'); ?>" class="text-secondary text-decoration-none"><?php echo __('common.home'); ?></a></li>
         <li class="breadcrumb-item"><a href="index.php?cat=<?php echo urlencode($post['category_slug']); ?>" class="text-secondary text-decoration-none"><?php
             if (isset($post['category_name'])) echo htmlspecialchars($post['category_name']);
         ?></a></li>
@@ -229,7 +228,7 @@ if ($author_bio != '') {
                     <?php endif; ?>
                     <span><i class="fa-solid fa-user"></i> <?php echo htmlspecialchars($author_name); ?></span>
                     <span><i class="fa-regular fa-calendar"></i> <?php echo khmer_date($post['created_at']); ?></span>
-                    <span><i class="fa-solid fa-clock"></i> <?php echo $read_time; ?> min read</span>
+                    <span><i class="fa-solid fa-clock"></i> <?php echo __('post.min_read', array('mins' => $read_time)); ?></span>
                     <span><i class="fa-solid fa-eye"></i> <span id="view-count"><?php echo (int)$post['views']; ?></span></span>
                 </div>
             </div>
@@ -272,7 +271,7 @@ if ($author_bio != '') {
                     <div class="text-secondary small author-card-bio"><?php echo htmlspecialchars(excerpt($author_subtitle, 120)); ?></div>
                     <?php if ($author_id > 0): ?>
                     <a href="profile.php?id=<?php echo $author_id; ?>" class="author-profile-link small">
-                        <i class="fa-solid fa-user"></i> View Profile
+                        <i class="fa-solid fa-user"></i> <?php echo __('post.view_profile'); ?>
                     </a>
                     <?php endif; ?>
                 </div>
@@ -287,16 +286,16 @@ if ($author_bio != '') {
                     <span id="like-count"><?php echo (int)$post['likes']; ?></span> <?php echo __('post.likes'); ?>
                 </button>
                 <button type="button" class="btn btn-outline-custom btn-share" data-share="copy" data-url="<?php echo htmlspecialchars($share_url); ?>">
-                    <i class="fa-solid fa-link"></i> Copy Link
+                    <i class="fa-solid fa-link"></i> <?php echo __('post.copy_link'); ?>
                 </button>
                 <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode($share_url); ?>" target="_blank" rel="noopener" class="btn btn-outline-custom">
-                    <i class="fa-brands fa-facebook"></i> Share
+                    <i class="fa-brands fa-facebook"></i> <?php echo __('post.share'); ?>
                 </a>
                 <a href="https://t.me/share/url?url=<?php echo urlencode($share_url); ?>&text=<?php echo urlencode($post['title']); ?>" target="_blank" rel="noopener" class="btn btn-outline-custom">
                     <i class="fa-brands fa-telegram"></i> Telegram
                 </a>
-                <a href="report.php?url=<?php echo urlencode($share_url); ?>" class="btn btn-outline-custom">
-                    <i class="fa-solid fa-flag"></i> Report
+                <a href="<?php echo app_url('report.php?url=' . urlencode($share_url)); ?>" class="btn btn-outline-custom">
+                    <i class="fa-solid fa-flag"></i> <?php echo __('post.report'); ?>
                 </a>
                 <?php if (comments_are_enabled()): ?>
                 <a href="#comments" class="btn btn-outline-custom">
@@ -311,7 +310,7 @@ if ($author_bio != '') {
             <h4 class="text-white mb-3"><i class="fa-solid fa-comments text-info me-2"></i><?php echo __('comments.title'); ?> (<?php echo (int) $comment_total; ?>)</h4>
 
             <?php if (count($comment_errors) > 0): ?>
-            <div class="alert alert-danger"><ul class="mb-0 small"><?php foreach ($comment_errors as $ce): ?><li><?php echo htmlspecialchars($ce); ?></li><?php endforeach; ?></ul></div>
+            <?php render_user_alerts($comment_errors, 'danger'); ?>
             <?php endif; ?>
 
             <?php if (isLoggedIn()): ?>
@@ -351,8 +350,8 @@ if ($author_bio != '') {
         <?php if ($prev_post || $next_post): ?>
         <div class="post-nav-row mt-4 reveal">
             <?php if ($prev_post): ?>
-            <a href="post.php?slug=<?php echo urlencode($prev_post['slug']); ?>" class="post-nav-card glass-panel">
-                <span class="post-nav-label"><i class="fa-solid fa-arrow-left"></i> Previous</span>
+            <a href="<?php echo post_url($prev_post['slug']); ?>" class="post-nav-card glass-panel">
+                <span class="post-nav-label"><i class="fa-solid fa-arrow-left"></i> <?php echo __('post.previous'); ?></span>
                 <span class="post-nav-title"><?php echo htmlspecialchars(excerpt($prev_post['title'], 50)); ?></span>
             </a>
             <?php else: ?>
@@ -360,8 +359,8 @@ if ($author_bio != '') {
             <?php endif; ?>
 
             <?php if ($next_post): ?>
-            <a href="post.php?slug=<?php echo urlencode($next_post['slug']); ?>" class="post-nav-card glass-panel text-end">
-                <span class="post-nav-label">Next <i class="fa-solid fa-arrow-right"></i></span>
+            <a href="<?php echo post_url($next_post['slug']); ?>" class="post-nav-card glass-panel text-end">
+                <span class="post-nav-label"><?php echo __('post.next'); ?> <i class="fa-solid fa-arrow-right"></i></span>
                 <span class="post-nav-title"><?php echo htmlspecialchars(excerpt($next_post['title'], 50)); ?></span>
             </a>
             <?php endif; ?>
@@ -371,7 +370,7 @@ if ($author_bio != '') {
 
     <aside class="col-lg-4">
         <div class="glass-panel p-4 mb-4 reveal sticky-sidebar">
-            <h5 class="text-white mb-3"><i class="fa-solid fa-fire text-warning me-2"></i>Popular Posts</h5>
+            <h5 class="text-white mb-3"><i class="fa-solid fa-fire text-warning me-2"></i><?php echo __('post.popular_posts'); ?></h5>
             <?php
             $pop = $pdo->prepare("SELECT p.title, p.slug, p.views, p.likes, p.image_url, p.video_type, p.video_url, c.icon AS category_icon
                 FROM posts p
@@ -382,9 +381,9 @@ if ($author_bio != '') {
             $popular_list = $pop->fetchAll();
             if (count($popular_list) == 0):
             ?>
-            <p class="text-secondary small mb-0">No other posts yet.</p>
+            <p class="text-secondary small mb-0"><?php echo __('post.no_other_posts'); ?></p>
             <?php else: foreach ($popular_list as $p): ?>
-            <a href="post.php?slug=<?php echo urlencode($p['slug']); ?>" class="sidebar-post-item">
+            <a href="<?php echo post_url($p['slug']); ?>" class="sidebar-post-item">
                 <?php echo render_sidebar_post_thumb($p); ?>
                 <div>
                     <div class="sidebar-post-title"><?php echo htmlspecialchars(excerpt($p['title'], 45)); ?></div>
@@ -395,7 +394,7 @@ if ($author_bio != '') {
         </div>
 
         <div class="glass-panel p-4 reveal">
-            <h5 class="text-white mb-3"><i class="fa-solid fa-tags text-warning me-2"></i>Related Posts</h5>
+            <h5 class="text-white mb-3"><i class="fa-solid fa-tags text-warning me-2"></i><?php echo __('post.related_posts'); ?></h5>
             <?php
             $rel = $pdo->prepare("SELECT p.title, p.slug, p.image_url, p.video_type, p.video_url, c.icon AS category_icon
                 FROM posts p
@@ -406,9 +405,9 @@ if ($author_bio != '') {
             $related_list = $rel->fetchAll();
             if (count($related_list) == 0):
             ?>
-            <p class="text-secondary small mb-0">No related posts in this category.</p>
+            <p class="text-secondary small mb-0"><?php echo __('post.no_related'); ?></p>
             <?php else: foreach ($related_list as $r): ?>
-            <a href="post.php?slug=<?php echo urlencode($r['slug']); ?>" class="sidebar-post-item">
+            <a href="<?php echo post_url($r['slug']); ?>" class="sidebar-post-item">
                 <?php echo render_sidebar_post_thumb($r); ?>
                 <div class="sidebar-post-title"><?php echo htmlspecialchars(excerpt($r['title'], 50)); ?></div>
             </a>

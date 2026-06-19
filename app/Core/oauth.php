@@ -585,7 +585,8 @@ function oauth_find_or_create_user($pdo, $profile)
     }
 
     if ($email != '') {
-        $sql = 'SELECT * FROM users WHERE email = :email LIMIT 1';
+        $email = normalize_email($email);
+        $sql = 'SELECT * FROM users WHERE LOWER(email) = :email LIMIT 1';
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array('email' => $email));
         $user = $stmt->fetch();
@@ -615,7 +616,9 @@ function oauth_find_or_create_user($pdo, $profile)
         $email = $provider . '_' . $oauth_id . '@oauth.local';
     }
 
-    $sql = 'SELECT COUNT(*) FROM users WHERE email = :email';
+    $email = normalize_email($email);
+
+    $sql = 'SELECT COUNT(*) FROM users WHERE LOWER(email) = :email';
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array('email' => $email));
     if ((int) $stmt->fetchColumn() > 0) {
@@ -731,14 +734,12 @@ function oauth_login_redirect($user)
 
     if (user_is_deleted($user)) {
         setFlashMessage('danger', 'This account has been closed.');
-        header('Location: ../login.php');
-        exit;
+        redirect_to('login.php');
     }
 
     if (user_is_banned($user)) {
         setFlashMessage('danger', 'This account has been suspended.');
-        header('Location: ../login.php');
-        exit;
+        redirect_to('login.php');
     }
 
     login_user_session($user);
@@ -748,12 +749,11 @@ function oauth_login_redirect($user)
     log_activity($pdo, 'user.oauth_login', $user['email']);
     setFlashMessage('success', 'Welcome, ' . $user['name'] . '!');
 
-    if ($user['role'] == 'admin' || $user['role'] == 'author') {
-        header('Location: ../admin/dashboard.php');
+    if ($user['role'] == 'admin') {
+        admin_redirect_to('dashboard.php');
     } else {
-        header('Location: ../index.php');
+        redirect_to('index.php');
     }
-    exit;
 }
 
 function oauth_handle_callback($provider, $code, $state)
@@ -762,8 +762,7 @@ function oauth_handle_callback($provider, $code, $state)
 
     if (!oauth_verify_state($provider, $state)) {
         setFlashMessage('danger', 'Social login failed. Please try again.');
-        header('Location: ../login.php');
-        exit;
+        redirect_to('login.php');
     }
 
     $profile = false;
@@ -780,15 +779,13 @@ function oauth_handle_callback($provider, $code, $state)
             $message = 'Social login failed: ' . $provider_error;
         }
         setFlashMessage('danger', $message);
-        header('Location: ../login.php');
-        exit;
+        redirect_to('login.php');
     }
 
     $user = oauth_find_or_create_user($pdo, $profile);
     if (!$user) {
         setFlashMessage('danger', 'Could not create your account. Please try again.');
-        header('Location: ../register.php');
-        exit;
+        redirect_to('register.php');
     }
 
     oauth_login_redirect($user);

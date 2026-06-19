@@ -19,7 +19,7 @@ class HelpersTest extends TestCase
         putenv('PRETTY_URLS=true');
         $this->assertSame('/post/my-post', post_url('my-post'));
         putenv('PRETTY_URLS=false');
-        $this->assertSame('post/my-post', post_url('my-post'));
+        $this->assertSame('post.php?slug=my-post', post_url('my-post'));
     }
 
     public function testRenderPostContentBold()

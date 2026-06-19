@@ -120,3 +120,29 @@ function issue_verification_for_new_user($pdo, $user_id)
 
     return send_user_verification_email($pdo, $user);
 }
+
+function issue_verification_on_email_change($pdo, $user_id, $old_email, $new_email)
+{
+    $old_email = normalize_email($old_email);
+    $new_email = normalize_email($new_email);
+
+    if ($new_email == '' || $old_email == $new_email || is_placeholder_oauth_email($new_email)) {
+        return false;
+    }
+
+    if (!email_verification_required()) {
+        mark_user_email_verified($pdo, (int) $user_id);
+        return false;
+    }
+
+    $sql = 'UPDATE users SET email_verified_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = :id';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array('id' => (int) $user_id));
+
+    $user = get_user_by_id($pdo, (int) $user_id);
+    if (!$user) {
+        return false;
+    }
+
+    return send_user_verification_email($pdo, $user);
+}

@@ -142,8 +142,14 @@ function notification_type_label($type)
     if ($type == 'content_report') {
         return 'Report';
     }
+    if ($type == 'incident_report') {
+        return 'Incident';
+    }
     if ($type == 'report_update') {
         return 'Report';
+    }
+    if ($type == 'incident_update') {
+        return 'Incident';
     }
     if ($type == 'post_approved' || $type == 'post_rejected') {
         return 'Post';
@@ -310,7 +316,7 @@ function delete_own_comment($pdo, $comment_id)
     return array('ok' => true);
 }
 
-function notify_post_author_on_comment($pdo, $post_id, $commenter_name, $post_slug, $needs_approval = false)
+function notify_post_author_on_comment($pdo, $post_id, $commenter_name, $post_slug, $needs_approval = false, $comment_id = 0)
 {
     $stmt = $pdo->prepare('SELECT user_id, title FROM posts WHERE id = :id');
     $stmt->execute(array('id' => (int) $post_id));
@@ -328,13 +334,18 @@ function notify_post_author_on_comment($pdo, $post_id, $commenter_name, $post_sl
     }
 
     if ($needs_approval) {
-        $title = 'New comment awaiting approval';
-        $message = $commenter_name . ' commented on "' . excerpt($post['title'], 40) . '". Approve it in My Comments.';
+        $title = 'Comment awaiting approval: "' . excerpt($post['title'], 34) . '"';
+        $message = $commenter_name . ' commented on your post "' . excerpt($post['title'], 56) . '". Review and approve it in My Comments.';
         $link = 'admin/my-comments.php?status=pending';
     } else {
-        $title = 'New comment on your post';
-        $message = $commenter_name . ' commented on "' . excerpt($post['title'], 40) . '".';
-        $link = 'post/' . rawurlencode($post_slug) . '#comments';
+        $title = 'New comment on "' . excerpt($post['title'], 34) . '"';
+        $message = $commenter_name . ' left a new comment on your post "' . excerpt($post['title'], 56) . '".';
+        $link = 'post/' . rawurlencode($post_slug);
+        if ((int) $comment_id > 0) {
+            $link = $link . '#comment-' . (int) $comment_id;
+        } else {
+            $link = $link . '#comments';
+        }
     }
 
     create_notification(
@@ -343,7 +354,8 @@ function notify_post_author_on_comment($pdo, $post_id, $commenter_name, $post_sl
         'new_comment',
         $title,
         $message,
-        $link
+        $link,
+        true
     );
 }
 
@@ -505,6 +517,57 @@ function notify_admins_content_report($pdo, $report_id, $reason)
     );
 }
 
+function notify_admins_incident_report($pdo, $incident_id, $incident_type, $priority, $title)
+{
+    $pretty_type = ucfirst(str_replace('_', ' ', (string) $incident_type));
+    $pretty_priority = strtoupper((string) $priority);
+    notify_all_admins(
+        $pdo,
+        'incident_report',
+        'New incident report (' . $pretty_priority . ')',
+        $pretty_type . ': ' . excerpt($title, 70),
+        'admin/incidents.php?action=view&id=' . (int) $incident_id
+    );
+}
+
+function notify_reporter_incident_update($pdo, $incident_id, $status, $admin_notes = '')
+{
+    $stmt = $pdo->prepare('SELECT id, user_id, title FROM incident_reports WHERE id = :id');
+    $stmt->execute(array('id' => (int) $incident_id));
+    $incident = $stmt->fetch();
+    if (!$incident || !isset($incident['user_id']) || (int) $incident['user_id'] <= 0) {
+        return;
+    }
+
+    $title = 'Incident update';
+    $message = 'Your incident report was updated.';
+    if ($status === 'in_progress') {
+        $title = 'Incident in progress';
+        $message = 'Your report "' . excerpt($incident['title'], 48) . '" is now being handled.';
+    } elseif ($status === 'resolved') {
+        $title = 'Incident resolved';
+        $message = 'Your report "' . excerpt($incident['title'], 48) . '" was marked resolved.';
+    } elseif ($status === 'open') {
+        $title = 'Incident reopened';
+        $message = 'Your report "' . excerpt($incident['title'], 48) . '" was reopened.';
+    }
+
+    $admin_notes = trim((string) $admin_notes);
+    if ($admin_notes !== '') {
+        $message .= ' Note: ' . excerpt($admin_notes, 100);
+    }
+
+    create_notification(
+        $pdo,
+        (int) $incident['user_id'],
+        'incident_update',
+        $title,
+        $message,
+        'notifications.php',
+        false
+    );
+}
+
 function notify_reporter_status_update($pdo, $report_id, $status, $admin_notes = '')
 {
     $stmt = $pdo->prepare('SELECT id, user_id, reason FROM content_reports WHERE id = :id');
@@ -659,7 +722,8 @@ function notify_comment_approved($pdo, $comment_id)
         'comment_approved',
         'Comment approved',
         'Your comment is now visible on the post.',
-        'post/' . rawurlencode($comment['post_slug']) . '#comments'
+        'post/' . rawurlencode($comment['post_slug']) . '#comments',
+        false
     );
 }
 
@@ -830,8 +894,8 @@ function duplicate_author_post($pdo, $post_id)
         $slug = $slug . '-' . time();
     }
 
-    $sql = 'INSERT INTO posts (category_id, user_id, title, slug, summary, content, image_url, image_alt, video_url, video_type, location, is_featured, status)
-            VALUES (:category_id, :user_id, :title, :slug, :summary, :content, :image_url, :image_alt, :video_url, :video_type, :location, FALSE, :status)
+    $sql = 'INSERT INTO posts (category_id, user_id, title, slug, summary, content, image_url, image_alt, video_url, video_type, post_kind, knowledge_label, mood_tag, location, latitude, longitude, expires_at, archive_on_expiry, challenge_id, is_featured, status)
+            VALUES (:category_id, :user_id, :title, :slug, :summary, :content, :image_url, :image_alt, :video_url, :video_type, :post_kind, :knowledge_label, :mood_tag, :location, :latitude, :longitude, :expires_at, :archive_on_expiry, :challenge_id, FALSE, :status)
             RETURNING id';
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array(
@@ -845,7 +909,15 @@ function duplicate_author_post($pdo, $post_id)
         'image_alt' => isset($post['image_alt']) ? $post['image_alt'] : '',
         'video_url' => $post['video_url'],
         'video_type' => isset($post['video_type']) ? $post['video_type'] : 'none',
+        'post_kind' => isset($post['post_kind']) ? $post['post_kind'] : 'general',
+        'knowledge_label' => isset($post['knowledge_label']) ? $post['knowledge_label'] : '',
+        'mood_tag' => isset($post['mood_tag']) ? $post['mood_tag'] : '',
         'location' => isset($post['location']) ? $post['location'] : '',
+        'latitude' => isset($post['latitude']) && $post['latitude'] !== '' ? $post['latitude'] : null,
+        'longitude' => isset($post['longitude']) && $post['longitude'] !== '' ? $post['longitude'] : null,
+        'expires_at' => isset($post['expires_at']) && $post['expires_at'] != '' ? $post['expires_at'] : null,
+        'archive_on_expiry' => isset($post['archive_on_expiry']) ? (bool) $post['archive_on_expiry'] : true,
+        'challenge_id' => isset($post['challenge_id']) && (int) $post['challenge_id'] > 0 ? (int) $post['challenge_id'] : null,
         'status' => 'Draft'
     ));
 
@@ -900,6 +972,12 @@ function notification_icon($type)
     }
     if ($type == 'report_update') {
         return 'fa-flag-checkered text-info';
+    }
+    if ($type == 'incident_report') {
+        return 'fa-triangle-exclamation text-danger';
+    }
+    if ($type == 'incident_update') {
+        return 'fa-shield-heart text-info';
     }
     return 'fa-bell text-secondary';
 }

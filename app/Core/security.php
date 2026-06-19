@@ -296,6 +296,15 @@ function login_is_locked($email)
 function login_lock_remaining($email)
 {
     $email = strtolower(trim($email));
+    if ($email == '') {
+        return 0;
+    }
+
+    if (rate_limit_driver() === 'database') {
+        global $pdo;
+        return rate_limit_remaining_seconds_db($pdo, 'login_fail', 'email:' . $email, 900);
+    }
+
     if (!isset($_SESSION['login_locks'][$email])) {
         return 0;
     }

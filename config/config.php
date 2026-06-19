@@ -65,11 +65,37 @@ function apply_database_url_from_env()
         $_ENV['DB_PASSWORD'] = $parts['pass'];
         $_SERVER['DB_PASSWORD'] = $parts['pass'];
     }
+
+    if (!getenv('DB_SSLMODE') && isset($parts['query'])) {
+        parse_str($parts['query'], $query);
+        if (isset($query['sslmode']) && $query['sslmode'] !== '') {
+            putenv('DB_SSLMODE=' . $query['sslmode']);
+            $_ENV['DB_SSLMODE'] = $query['sslmode'];
+            $_SERVER['DB_SSLMODE'] = $query['sslmode'];
+        }
+    }
 }
 
 loadEnv(__DIR__ . '/../.env');
 
 apply_database_url_from_env();
+
+function app_resolve_timezone()
+{
+    $tz = getenv('APP_TIMEZONE');
+    if ($tz == false || $tz == '') {
+        $tz = 'Asia/Phnom_Penh';
+    }
+    try {
+        new DateTimeZone($tz);
+    } catch (Exception $e) {
+        $tz = 'Asia/Phnom_Penh';
+    }
+    return $tz;
+}
+
+define('APP_TIMEZONE', app_resolve_timezone());
+date_default_timezone_set(APP_TIMEZONE);
 
 require_once __DIR__ . '/../app/Core/rate_limit.php';
 require_once __DIR__ . '/../app/Core/security.php';
@@ -119,8 +145,14 @@ if ($db_pass == false || $db_pass == '') {
 }
 define('DB_PASS', $db_pass);
 
-define('SITE_NAME', 'Village Connect');
-define('SITE_TAGLINE', 'Post photos, videos, and updates from your community');
+$db_sslmode = getenv('DB_SSLMODE');
+if ($db_sslmode == false) {
+    $db_sslmode = '';
+}
+define('DB_SSLMODE', $db_sslmode);
+
+define('SITE_NAME', 'Villages Connection');
+define('SITE_TAGLINE', 'Building Stronger Communities Together');
 define('SITE_DESC', 'Share everyday moments, stories, and creative content — like Facebook, Instagram, and Twitter, built for your village');
 
 $site_contact = getenv('SITE_CONTACT_EMAIL');
@@ -185,15 +217,15 @@ function alert_icon_class($type)
 function flash_modal_title($type)
 {
     if ($type == 'success') {
-        return 'Success';
+        return __('flash.success');
     }
     if ($type == 'danger') {
-        return 'Something went wrong';
+        return __('flash.danger');
     }
     if ($type == 'warning') {
-        return 'Heads up';
+        return __('flash.warning');
     }
-    return 'Notice';
+    return __('flash.info');
 }
 
 function displayFlashMessage()
@@ -214,7 +246,7 @@ function displayFlashMessage()
         echo '<div class="flash-modal-icon"><i class="fa-solid ' . $icon . '"></i></div>';
         echo '<h4 class="flash-modal-title">' . htmlspecialchars($title) . '</h4>';
         echo '<p class="flash-modal-text">' . htmlspecialchars($msg['message']) . '</p>';
-        echo '<button type="button" class="btn btn-gradient flash-modal-btn px-4" data-bs-dismiss="modal">Got it</button>';
+        echo '<button type="button" class="btn btn-gradient flash-modal-btn px-4" data-bs-dismiss="modal">' . htmlspecialchars(__('common.got_it')) . '</button>';
         echo '</div></div></div></div>';
     }
 }

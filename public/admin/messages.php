@@ -169,13 +169,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
         <div class="mt-4 pt-3 border-top border-secondary border-opacity-25">
             <h6 class="text-white mb-3"><i class="fa-solid fa-reply text-warning me-2"></i>Reply</h6>
             <?php if (count($reply_errors) > 0): ?>
-            <div class="alert alert-danger py-2">
-                <ul class="mb-0 small">
-                    <?php foreach ($reply_errors as $reply_error): ?>
-                    <li><?php echo htmlspecialchars($reply_error); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+            <?php render_user_alerts($reply_errors, 'danger'); ?>
             <?php endif; ?>
             <form method="POST" action="messages.php?action=view&id=<?php echo (int) $view_message['id']; ?>">
                 <?php echo csrf_field(); ?>

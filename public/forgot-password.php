@@ -7,21 +7,20 @@ $email = '';
 $errors = array();
 
 if (isLoggedIn()) {
-    header('Location: index.php');
-    exit;
+    redirect_to('index.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
 
     if (isset($_POST['email'])) {
-        $email = trim($_POST['email']);
+        $email = normalize_email($_POST['email']);
     }
 
     if ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Please enter a valid email address.';
     } else {
-        $sql = 'SELECT id, name, email FROM users WHERE email = :email';
+        $sql = 'SELECT id, name, email FROM users WHERE LOWER(email) = :email';
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array('email' => $email));
         $user = $stmt->fetch();
@@ -44,15 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     $_SESSION['reset_email'] = $user['email'];
                     setFlashMessage('success', 'Check your email for the 6-digit OTP code.');
-                    header('Location: reset-password.php');
-                    exit;
+                    redirect_to('reset-password.php');
                 }
             }
         } else {
             $_SESSION['reset_email'] = $email;
             setFlashMessage('success', 'Check your email for the 6-digit OTP code.');
-            header('Location: reset-password.php');
-            exit;
+            redirect_to('reset-password.php');
         }
     }
 }
@@ -84,13 +81,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         </div>
 
                         <?php if (count($errors) > 0): ?>
-                        <div class="alert alert-danger">
-                            <ul class="mb-0 small">
-                                <?php foreach ($errors as $error): ?>
-                                <li><?php echo htmlspecialchars($error); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
+                        <?php render_user_alerts($errors, 'danger'); ?>
                         <?php endif; ?>
 
                         <form action="forgot-password.php" method="POST">

@@ -12,7 +12,7 @@ class PageController extends Controller
 
         $base_path = '';
 
-        $page_description = SITE_DESC;
+        $page_description = __('site.desc');
         if (isset($options['description'])) {
             $page_description = $options['description'];
         } elseif (function_exists('site_default_meta_description')) {
@@ -38,58 +38,58 @@ class PageController extends Controller
     {
         $description = trim(get_setting('seo_about_description', ''));
         if ($description == '') {
-            $description = 'Learn about ' . SITE_NAME . ' — a community social platform for sharing photos, videos, and local updates.';
+            $description = __('page.about.meta', array('site' => __('site.name')));
         }
 
-        $this->renderPage('about', 'About Us', array(
+        $this->renderPage('about', __('page.about.breadcrumb'), array(
             'description' => $description,
             'breadcrumbs' => array(
-                array('label' => 'Home', 'url' => 'index.php'),
-                array('label' => 'About Us', 'url' => '')
+                array('label' => __('common.home'), 'url' => 'index.php'),
+                array('label' => __('page.about.breadcrumb'), 'url' => '')
             )
         ));
     }
 
     public function faq()
     {
-        $this->renderPage('faq', 'FAQ', array(
-            'description' => 'Frequently asked questions about accounts, posting, and using ' . SITE_NAME . '.',
+        $this->renderPage('faq', __('page.faq.title'), array(
+            'description' => __('page.faq.meta', array('site' => __('site.name'))),
             'breadcrumbs' => array(
-                array('label' => 'Home', 'url' => 'index.php'),
-                array('label' => 'FAQ', 'url' => '')
+                array('label' => __('common.home'), 'url' => 'index.php'),
+                array('label' => __('page.faq.title'), 'url' => '')
             )
         ));
     }
 
     public function helpUs()
     {
-        $this->renderPage('help-us', 'Help Us', array(
-            'description' => 'Ways to support ' . SITE_NAME . ' and help the community grow.',
+        $this->renderPage('help-us', __('page.help.title'), array(
+            'description' => __('page.help.meta', array('site' => __('site.name'))),
             'breadcrumbs' => array(
-                array('label' => 'Home', 'url' => 'index.php'),
-                array('label' => 'Help Us', 'url' => '')
+                array('label' => __('common.home'), 'url' => 'index.php'),
+                array('label' => __('page.help.breadcrumb'), 'url' => '')
             )
         ));
     }
 
     public function terms()
     {
-        $this->renderPage('terms', 'Terms of Service', array(
-            'description' => 'Terms of Service for using ' . SITE_NAME . '.',
+        $this->renderPage('terms', __('page.terms.title'), array(
+            'description' => __('page.terms.meta', array('site' => __('site.name'))),
             'breadcrumbs' => array(
-                array('label' => 'Home', 'url' => 'index.php'),
-                array('label' => 'Terms of Service', 'url' => '')
+                array('label' => __('common.home'), 'url' => 'index.php'),
+                array('label' => __('page.terms.title'), 'url' => '')
             )
         ));
     }
 
     public function privacy()
     {
-        $this->renderPage('privacy', 'Privacy Policy', array(
-            'description' => 'How ' . SITE_NAME . ' collects, uses, and protects your personal data.',
+        $this->renderPage('privacy', __('page.privacy.title'), array(
+            'description' => __('page.privacy.meta', array('site' => __('site.name'))),
             'breadcrumbs' => array(
-                array('label' => 'Home', 'url' => 'index.php'),
-                array('label' => 'Privacy Policy', 'url' => '')
+                array('label' => __('common.home'), 'url' => 'index.php'),
+                array('label' => __('page.privacy.title'), 'url' => '')
             )
         ));
     }

@@ -3,7 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 requireLogin();
 
 if (isset($_GET['read']) && (int) $_GET['read'] > 0) {
-    setFlashMessage('warning', 'Please use the Open button to view notifications.');
+    setFlashMessage('warning', __('notifications.use_open'));
     header('Location: notifications.php');
     exit;
 }
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mark_read'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mark_all'])) {
     require_valid_csrf();
     mark_all_notifications_read($pdo, (int) $_SESSION['user_id']);
-    setFlashMessage('success', 'All notifications marked as read.');
+    setFlashMessage('success', __('notifications.all_read'));
     header('Location: notifications.php');
     exit;
 }
@@ -43,7 +43,7 @@ try {
     $notifications = array();
 }
 
-$page_title = 'Notifications';
+$page_title = __('notifications.title');
 require_once ROOT_PATH . '/app/Views/layouts/header.php';
 ?>
 
@@ -51,7 +51,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
     <div class="col-lg-8">
         <div class="glass-panel p-4 reveal">
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                <h3 class="text-white mb-0"><i class="fa-solid fa-bell text-warning me-2"></i>Notifications</h3>
+                <h3 class="text-white mb-0"><i class="fa-solid fa-bell text-warning me-2"></i><?php echo __('notifications.title'); ?></h3>
                 <div class="d-flex gap-2 flex-wrap">
                     <?php if (push_is_configured()): ?>
                     <button type="button" id="btn-push-enable" class="btn btn-gradient btn-sm"
@@ -69,7 +69,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                 <form method="POST" action="notifications.php">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="mark_all" value="1">
-                    <button type="submit" class="btn btn-outline-custom btn-sm">Mark all read</button>
+                    <button type="submit" class="btn btn-outline-custom btn-sm"><?php echo __('notifications.mark_all'); ?></button>
                 </form>
                 <?php endif; ?>
                 </div>
@@ -78,7 +78,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             <?php if (count($notifications) == 0): ?>
             <div class="empty-state py-4">
                 <i class="fa-regular fa-bell-slash fa-2x text-secondary mb-3"></i>
-                <p class="text-secondary mb-0">No notifications yet.</p>
+                <p class="text-secondary mb-0"><?php echo __('notifications.empty'); ?></p>
             </div>
             <?php else: ?>
             <div class="notification-list">
@@ -96,7 +96,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <?php echo csrf_field(); ?>
                         <input type="hidden" name="mark_read" value="<?php echo (int) $note['id']; ?>">
                         <input type="hidden" name="go" value="<?php echo htmlspecialchars($note['link_url']); ?>">
-                        <button type="submit" class="btn btn-sm btn-outline-custom">Open</button>
+                        <button type="submit" class="btn btn-sm btn-outline-custom"><?php echo __('common.open'); ?></button>
                     </form>
                     <?php endif; ?>
                 </div>

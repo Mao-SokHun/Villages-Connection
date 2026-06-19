@@ -8,6 +8,13 @@ function &admin_setting_cache()
 
 function load_admin_settings($pdo)
 {
+    $cached = app_cache_get('site_settings', 300);
+    if (is_array($cached)) {
+        $ref = &admin_setting_cache();
+        $ref = $cached;
+        return $cached;
+    }
+
     $cache = array();
     try {
         $rows = $pdo->query('SELECT setting_key, setting_value FROM site_settings')->fetchAll();
@@ -17,6 +24,8 @@ function load_admin_settings($pdo)
     } catch (PDOException $e) {
         // Table may not exist before migration.
     }
+
+    app_cache_put('site_settings', $cache);
 
     $ref = &admin_setting_cache();
     $ref = $cache;
@@ -53,6 +62,7 @@ function set_setting($pdo, $key, $value)
         $cache = array();
     }
     $cache[$key] = $value;
+    app_cache_put('site_settings', $cache);
 }
 
 function setting_is_enabled($key, $default = false)
@@ -176,6 +186,18 @@ function unban_user($pdo, $user_id)
     log_activity($pdo, 'user.unbanned', 'User #' . $user_id);
 }
 
+function activate_user_account($pdo, $user_id)
+{
+    $sql = "UPDATE users SET account_status = 'active', deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = :id AND account_status = 'deleted'";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array('id' => (int) $user_id));
+    if ($stmt->rowCount() > 0) {
+        log_activity($pdo, 'user.activated', 'User #' . (int) $user_id);
+        return true;
+    }
+    return false;
+}
+
 function posts_require_approval()
 {
     return setting_is_enabled('require_post_approval', false);
@@ -234,6 +256,9 @@ function post_status_label($status)
     if ($status == 'Published') {
         return 'Published';
     }
+    if ($status == 'Archived') {
+        return 'Archived';
+    }
     return 'Draft';
 }
 
@@ -247,6 +272,9 @@ function post_status_badge_class($status)
     }
     if ($status == 'Rejected') {
         return 'bg-danger';
+    }
+    if ($status == 'Archived') {
+        return 'bg-dark';
     }
     return 'bg-secondary';
 }
@@ -286,20 +314,55 @@ function save_content_report($pdo, $name, $email, $reason, $post_url, $details, 
     return $id;
 }
 
+function save_incident_report($pdo, $payload)
+{
+    $sql = "INSERT INTO incident_reports (
+                user_id, reporter_name, reporter_email, incident_type, priority, title, details,
+                village_name, location_text, latitude, longitude
+            ) VALUES (
+                :user_id, :reporter_name, :reporter_email, :incident_type, :priority, :title, :details,
+                :village_name, :location_text, :latitude, :longitude
+            ) RETURNING id";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array(
+        'user_id' => isset($payload['user_id']) && (int) $payload['user_id'] > 0 ? (int) $payload['user_id'] : null,
+        'reporter_name' => $payload['reporter_name'],
+        'reporter_email' => $payload['reporter_email'],
+        'incident_type' => $payload['incident_type'],
+        'priority' => $payload['priority'],
+        'title' => $payload['title'],
+        'details' => $payload['details'],
+        'village_name' => isset($payload['village_name']) ? $payload['village_name'] : '',
+        'location_text' => isset($payload['location_text']) ? $payload['location_text'] : '',
+        'latitude' => isset($payload['latitude']) && $payload['latitude'] !== '' ? $payload['latitude'] : null,
+        'longitude' => isset($payload['longitude']) && $payload['longitude'] !== '' ? $payload['longitude'] : null,
+    ));
+    $id = (int) $stmt->fetchColumn();
+    log_activity($pdo, 'incident.reported', 'Incident #' . $id . ' — ' . excerpt($payload['title'], 80));
+    notify_admins_incident_report($pdo, $id, $payload['incident_type'], $payload['priority'], $payload['title']);
+    return $id;
+}
+
 function admin_unread_counts($pdo)
 {
-    $counts = array('messages' => 0, 'reports' => 0, 'pending_posts' => 0, 'pending_comments' => 0, 'notifications' => 0);
+    $counts = array('messages' => 0, 'reports' => 0, 'incidents' => 0, 'pending_posts' => 0, 'pending_comments' => 0, 'notifications' => 0);
 
     if (!isLoggedIn()) {
         return $counts;
     }
 
     $user_id = (int) $_SESSION['user_id'];
+    $cache_key = 'admin_unread_counts_' . $user_id;
+    $cached = app_cache_get($cache_key, 30);
+    if (is_array($cached)) {
+        return $cached;
+    }
 
     try {
         $sql = "SELECT
             (SELECT COUNT(*) FROM contact_messages WHERE status = 'new') AS messages,
             (SELECT COUNT(*) FROM content_reports WHERE status = 'open') AS reports,
+            (SELECT COUNT(*) FROM incident_reports WHERE status = 'open') AS incidents,
             (SELECT COUNT(*) FROM posts WHERE status = 'Pending') AS pending_posts,
             (SELECT COUNT(*) FROM post_comments WHERE status = 'pending') AS pending_comments,
             (SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = FALSE) AS notifications";
@@ -309,6 +372,7 @@ function admin_unread_counts($pdo)
         if ($row) {
             $counts['messages'] = (int) $row['messages'];
             $counts['reports'] = (int) $row['reports'];
+            $counts['incidents'] = (int) $row['incidents'];
             $counts['pending_posts'] = (int) $row['pending_posts'];
             $counts['pending_comments'] = (int) $row['pending_comments'];
             $counts['notifications'] = (int) $row['notifications'];
@@ -317,21 +381,48 @@ function admin_unread_counts($pdo)
         // Tables may not exist yet.
     }
 
+    app_cache_put($cache_key, $counts);
+
     return $counts;
+}
+
+function invalidate_admin_unread_counts_cache()
+{
+    if (!isLoggedIn()) {
+        return;
+    }
+    app_cache_forget('admin_unread_counts_' . (int) $_SESSION['user_id']);
 }
 
 function get_active_announcement($pdo)
 {
+    static $request_cache = null;
+    static $loaded = false;
+    if ($loaded) {
+        return $request_cache;
+    }
+    $loaded = true;
+
+    $cached = app_cache_get('active_announcement', 120);
+    if (is_array($cached) && array_key_exists('row', $cached)) {
+        $request_cache = $cached['row'];
+        return $request_cache;
+    }
+
     try {
         $sql = "SELECT * FROM announcements
                 WHERE is_active = TRUE
                 AND (starts_at IS NULL OR starts_at <= CURRENT_TIMESTAMP)
                 AND (ends_at IS NULL OR ends_at >= CURRENT_TIMESTAMP)
                 ORDER BY id DESC LIMIT 1";
-        return $pdo->query($sql)->fetch();
+        $request_cache = $pdo->query($sql)->fetch();
     } catch (PDOException $e) {
-        return null;
+        $request_cache = null;
     }
+
+    app_cache_put('active_announcement', array('row' => $request_cache));
+
+    return $request_cache;
 }
 
 function admin_can_manage_post($post)

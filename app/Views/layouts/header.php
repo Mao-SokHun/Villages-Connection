@@ -52,18 +52,19 @@ if (!isset($canonical_url) || $canonical_url == '') {
     $canonical_url = current_page_url();
 }
 
-$lang_redirect = '';
-if (I18N_USER_SWITCHER_ENABLED) {
-    $lang_redirect = basename($_SERVER['SCRIPT_NAME']);
-    if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
-        $lang_redirect .= '?' . $_SERVER['QUERY_STRING'];
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars(current_locale()); ?>" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <?php if (!$is_admin_dir && pretty_urls_enabled()):
+        $document_base_href = '/';
+        if (defined('APP_URL') && APP_URL != '') {
+            $document_base_href = rtrim(APP_URL, '/') . '/';
+        }
+    ?>
+    <base href="<?php echo htmlspecialchars($document_base_href); ?>">
+    <?php endif; ?>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="dark light">
     <title><?php echo htmlspecialchars(isset($page_title) ? $page_title . ' - ' . SITE_NAME : SITE_NAME . ' | ' . SITE_TAGLINE, ENT_QUOTES, 'UTF-8'); ?></title>
@@ -85,51 +86,35 @@ if (I18N_USER_SWITCHER_ENABLED) {
     <meta name="twitter:description" content="<?php echo htmlspecialchars($page_description); ?>">
     <script>
     (function() {
-        var userPrefs = {
-            theme: <?php echo json_encode(isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system'); ?>,
-            density: <?php echo json_encode(isset($_SESSION['ui_density']) ? $_SESSION['ui_density'] : 'comfortable'); ?>
-        };
         var saved = localStorage.getItem('cms-theme');
         var theme = 'dark';
         if (saved == 'light' || saved == 'dark') {
             theme = saved;
-        } else if (userPrefs.theme == 'light' || userPrefs.theme == 'dark') {
-            theme = userPrefs.theme;
         } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
             theme = 'light';
         }
         document.documentElement.setAttribute('data-theme', theme);
-
-        var density = localStorage.getItem('cms-density');
-        if (density != 'compact' && density != 'comfortable') {
-            density = userPrefs.density == 'compact' ? 'compact' : 'comfortable';
-        }
-        document.documentElement.setAttribute('data-density', density);
     })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@300;400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=Estonia&family=Kings&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Estonia&family=Fredoka:wght@600;700&family=Inter:opsz,wght@14..32,400..700&family=Noto+Sans+Khmer:wght@400;500;600;700&family=Noto+Sans+Khmer+UI:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="/css/style.css?v=<?php echo asset_version('css/style.css'); ?>" rel="stylesheet">
-    <link rel="manifest" href="/manifest.webmanifest">
+    <link href="<?php echo public_asset_url('css/style.css'); ?>?v=<?php echo asset_version('css/style.css'); ?>" rel="stylesheet">
+    <link rel="manifest" href="<?php echo public_asset_url('manifest.webmanifest'); ?>">
+    <link rel="icon" type="image/png" href="<?php echo public_asset_url('icons/logo.png'); ?>?v=<?php echo asset_version('icons/logo.png'); ?>">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/icons/icon-192.svg">
+    <link rel="apple-touch-icon" href="<?php echo public_asset_url('icons/logo.png'); ?>">
     <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token()); ?>">
     <script>
     window.APP_BASE = <?php echo json_encode($base_path); ?>;
     window.APP_PRETTY = <?php echo pretty_urls_enabled() ? 'true' : 'false'; ?>;
     window.APP_ROUTE_MAP = <?php echo json_encode(public_pretty_route_map()); ?>;
-    window.APP_USER_PREFS = <?php echo json_encode(array(
-        'theme' => isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system',
-        'density' => isset($_SESSION['ui_density']) ? $_SESSION['ui_density'] : 'comfortable',
-        'loggedIn' => isLoggedIn()
-    )); ?>;
     window.APP_I18N = <?php echo json_encode(array(
         'like_login' => __('post.like_login'),
         'like_thanks' => __('post.like_thanks'),
@@ -138,10 +123,41 @@ if (I18N_USER_SWITCHER_ENABLED) {
         'bookmark_login' => __('bookmarks.login'),
         'bookmark_saved' => __('bookmarks.saved'),
         'bookmark_removed' => __('bookmarks.removed'),
+        'bookmark_fail' => __('js.bookmark_fail'),
+        'notify_open' => __('nav.notify_open'),
+        'notify_empty' => __('nav.notify_empty'),
+        'notify_loading' => __('nav.notify_loading'),
+        'notify_error' => __('nav.notify_error'),
+        'confirm' => __('common.confirm'),
+        'confirm_message' => __('common.confirm_message'),
+        'cancel' => __('common.cancel'),
+        'delete' => __('common.delete'),
+        'error' => __('common.error'),
+        'failed' => __('common.failed'),
+        'copied' => __('common.copied'),
+        'copied_link' => __('common.copied_link'),
+        'copy_link_prompt' => __('common.copy_link_prompt'),
+        'network_error' => __('common.network_error'),
+        'server_error' => __('common.server_error'),
+        'sign_in' => __('common.sign_in'),
+        'show_password' => __('common.show_password'),
+        'hide_password' => __('common.hide_password'),
+        'choose_category' => __('js.choose_category'),
+        'comment_min' => __('js.comment_min'),
+        'comment_max' => __('js.comment_max'),
+        'comment_update_fail' => __('js.comment_update_fail'),
+        'comment_delete_fail' => __('js.comment_delete_fail'),
+        'comment_delete_confirm' => __('comments.delete_confirm'),
+        'follow_fail' => __('js.follow_fail'),
+        'try_again' => __('js.try_again'),
+        'follow' => __('profile.follow'),
+        'unfollow' => __('profile.unfollow'),
+        'push_not_configured' => __('push.not_configured'),
+        'push_enable_failed' => __('push.enable_failed'),
     )); ?>;
     </script>
 </head>
-<body>
+<body<?php echo $is_admin_dir ? '' : ' class="site-public"'; ?>>
 <div class="liquid-bg" aria-hidden="true">
     <div class="liquid-blob liquid-blob-1"></div>
     <div class="liquid-blob liquid-blob-2"></div>
@@ -151,13 +167,10 @@ if (I18N_USER_SWITCHER_ENABLED) {
 <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top" id="main-navbar">
     <div class="container navbar-container">
         <a class="navbar-brand navbar-brand-custom" href="<?php echo app_url('index.php'); ?>">
-            <span class="brand-icon"><img src="/icons/brand-mark.svg" alt="<?php echo htmlspecialchars(SITE_NAME); ?> logo" class="brand-icon-image"></span>
-            <span class="brand-text">
-                <span class="brand-title"><?php echo SITE_NAME; ?></span>
-            </span>
+            <?php echo render_code_logo('nav'); ?>
         </a>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler navbar-toggler--desktop" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="<?php echo htmlspecialchars(__('common.nav_toggle')); ?>">
             <span class="navbar-toggler-icon"></span>
         </button>
 
@@ -225,7 +238,7 @@ if (I18N_USER_SWITCHER_ENABLED) {
                     <ul class="dropdown-menu glass-dropdown" aria-labelledby="navbarDropdown">
                         <li class="dropdown-header-custom"><?php echo __('nav.browse_topics'); ?></li>
                         <li>
-                            <a class="dropdown-item-custom" href="<?php echo $base_path; ?>index.php">
+                            <a class="dropdown-item-custom" href="<?php echo app_url('index.php'); ?>">
                                 <span class="dropdown-item-icon all"><i class="fa-solid fa-border-all"></i></span>
                                 <span class="dropdown-item-text"><?php echo __('nav.all_categories'); ?></span>
                             </a>
@@ -235,7 +248,7 @@ if (I18N_USER_SWITCHER_ENABLED) {
                         foreach (nav_category_list($pdo) as $nc):
                         ?>
                         <li>
-                            <a class="dropdown-item-custom" href="<?php echo $base_path; ?>index.php?cat=<?php echo $nc['slug']; ?>">
+                            <a class="dropdown-item-custom" href="<?php echo app_url('index.php?cat=' . rawurlencode($nc['slug'])); ?>">
                                 <span class="dropdown-item-icon"><?php echo render_category_icon($nc['icon'], ''); ?></span>
                                 <span class="dropdown-item-text"><?php echo htmlspecialchars($nc['name']); ?></span>
                             </a>
@@ -254,12 +267,11 @@ if (I18N_USER_SWITCHER_ENABLED) {
                 </form>
 
                 <div class="navbar-tools">
-                    <?php if (I18N_USER_SWITCHER_ENABLED): ?>
-                    <div class="nav-lang-switch" aria-label="<?php echo htmlspecialchars(__('common.language')); ?>">
-                        <a href="<?php echo $base_path; ?>set-language.php?lang=km&amp;redirect=<?php echo urlencode($lang_redirect); ?>" class="nav-lang-btn<?php if (current_locale() == 'km') echo ' active'; ?>" title="ខ្មែរ">ខ្មែរ</a>
-                        <a href="<?php echo $base_path; ?>set-language.php?lang=en&amp;redirect=<?php echo urlencode($lang_redirect); ?>" class="nav-lang-btn<?php if (current_locale() == 'en') echo ' active'; ?>" title="English">EN</a>
+                    <div class="lang-switch" role="group" aria-label="<?php echo htmlspecialchars(__('common.language')); ?>">
+                        <a href="<?php echo htmlspecialchars(language_switch_url('en')); ?>" class="lang-switch-link <?php if (current_locale() === 'en') echo 'is-active'; ?>" <?php if (current_locale() === 'en') echo 'aria-current="true"'; ?> title="<?php echo htmlspecialchars(__('lang.en')); ?>" aria-label="<?php echo htmlspecialchars(__('lang.en')); ?>"><?php echo htmlspecialchars(__('lang.en_short')); ?></a>
+                        <span class="lang-switch-sep" aria-hidden="true">|</span>
+                        <a href="<?php echo htmlspecialchars(language_switch_url('km')); ?>" class="lang-switch-link lang-switch-link-km <?php if (current_locale() === 'km') echo 'is-active'; ?>" <?php if (current_locale() === 'km') echo 'aria-current="true"'; ?> title="<?php echo htmlspecialchars(__('lang.km')); ?>" aria-label="<?php echo htmlspecialchars(__('lang.km')); ?>"><?php echo htmlspecialchars(__('lang.km_toggle')); ?></a>
                     </div>
-                    <?php endif; ?>
                     <button type="button" id="theme-toggle" class="nav-tool-btn theme-toggle-btn" aria-label="<?php echo htmlspecialchars(__('common.theme')); ?>" title="<?php echo htmlspecialchars(__('common.theme')); ?>">
                         <i class="fa-solid fa-moon theme-icon-dark"></i>
                         <i class="fa-solid fa-sun theme-icon-light"></i>
@@ -277,7 +289,7 @@ if (I18N_USER_SWITCHER_ENABLED) {
                         $nav_account_subtitle = user_account_subtitle($nav_session_user);
                     ?>
                     <div class="dropdown nav-notify-dropdown">
-                        <button class="nav-tool-btn nav-notify-btn" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="Notifications" title="Notifications">
+                        <button class="nav-tool-btn nav-notify-btn" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="<?php echo htmlspecialchars(__('nav.notifications')); ?>" title="<?php echo htmlspecialchars(__('nav.notifications')); ?>">
                             <i class="fa-solid fa-bell"></i>
                             <span class="nav-notify-badge" id="nav-notify-badge" hidden></span>
                         </button>
@@ -293,7 +305,7 @@ if (I18N_USER_SWITCHER_ENABLED) {
                                 </div>
                             </div>
                             <div id="nav-notify-list" class="nav-notify-list">
-                                <div class="nav-notify-empty text-secondary small">Open to view notifications.</div>
+                                <div class="nav-notify-empty text-secondary small"><?php echo __('nav.notify_open'); ?></div>
                             </div>
                             <?php if (!isAdmin()): ?>
                             <div class="nav-notify-foot">
@@ -302,7 +314,7 @@ if (I18N_USER_SWITCHER_ENABLED) {
                             </div>
                             <?php else: ?>
                             <div class="nav-notify-foot">
-                                <a href="<?php echo admin_area_url('messages.php'); ?>"><i class="fa-solid fa-inbox"></i> Contact Inbox</a>
+                                <a href="<?php echo admin_area_url('messages.php'); ?>"><i class="fa-solid fa-inbox"></i> <?php echo __('nav.contact_inbox'); ?></a>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -355,41 +367,12 @@ if (I18N_USER_SWITCHER_ENABLED) {
                             <?php if ($show_user_menu_edit_profile): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('edit-profile.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-user-pen"></i></span><span class="dropdown-item-text"><?php echo __('nav.edit_profile'); ?></span></a></li>
                             <?php endif; ?>
-                            <li><hr class="dropdown-divider-custom"></li>
-                            <li class="profile-pref-group px-3 py-2">
-                                <div class="profile-pref-title">Appearance</div>
-                                <div class="profile-pref-row">
-                                    <span class="profile-pref-label">Theme</span>
-                                    <div class="profile-pref-actions">
-                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system') == 'system') echo ' active'; ?>" data-pref-key="theme" data-pref-value="system">System</button>
-                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system') == 'dark') echo ' active'; ?>" data-pref-key="theme" data-pref-value="dark">Dark</button>
-                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_theme']) ? $_SESSION['ui_theme'] : 'system') == 'light') echo ' active'; ?>" data-pref-key="theme" data-pref-value="light">Light</button>
-                                    </div>
-                                </div>
-                                <div class="profile-pref-row">
-                                    <span class="profile-pref-label">Density</span>
-                                    <div class="profile-pref-actions">
-                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_density']) ? $_SESSION['ui_density'] : 'comfortable') == 'comfortable') echo ' active'; ?>" data-pref-key="density" data-pref-value="comfortable">Comfortable</button>
-                                        <button type="button" class="profile-pref-btn<?php if ((isset($_SESSION['ui_density']) ? $_SESSION['ui_density'] : 'comfortable') == 'compact') echo ' active'; ?>" data-pref-key="density" data-pref-value="compact">Compact</button>
-                                    </div>
-                                </div>
-                            </li>
                             <?php if ($show_user_menu_notifications): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('bookmarks.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-bookmark"></i></span><span class="dropdown-item-text"><?php echo __('nav.bookmarks'); ?></span></a></li>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('notifications.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-bell"></i></span><span class="dropdown-item-text"><?php echo __('nav.notifications'); ?></span></a></li>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('support.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-headset"></i></span><span class="dropdown-item-text"><?php echo __('nav.support_messages'); ?></span></a></li>
                             <?php endif; ?>
                             <li><hr class="dropdown-divider-custom"></li>
-                            <li>
-                                <form method="POST" action="<?php echo app_url('logout.php'); ?>" class="dropdown-logout-form">
-                                    <?php echo csrf_field(); ?>
-                                    <input type="hidden" name="switch_account" value="1">
-                                    <button type="submit" class="dropdown-item-custom w-100 text-start border-0 bg-transparent">
-                                        <span class="dropdown-item-icon"><i class="fa-solid fa-users"></i></span>
-                                        <span class="dropdown-item-text">Switch account</span>
-                                    </button>
-                                </form>
-                            </li>
                             <li>
                                 <form method="POST" action="<?php echo app_url('logout.php'); ?>" class="dropdown-logout-form">
                                     <?php echo csrf_field(); ?>
@@ -402,14 +385,19 @@ if (I18N_USER_SWITCHER_ENABLED) {
                         </ul>
                     </div>
                     <?php else: ?>
-                    <a href="<?php echo app_url('login.php'); ?>" class="nav-auth-link"><?php echo __('nav.sign_in'); ?></a>
-                    <a href="<?php echo app_url('register.php'); ?>" class="btn btn-gradient btn-sm nav-register-btn"><?php echo __('nav.register'); ?></a>
+                    <div class="navbar-auth-group">
+                        <a href="<?php echo app_url('login.php'); ?>" class="nav-auth-link"><?php echo __('nav.sign_in'); ?></a>
+                        <a href="<?php echo app_url('register.php'); ?>" class="btn btn-gradient btn-sm nav-register-btn"><?php echo __('nav.register'); ?></a>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </nav>
+<?php if (!$is_admin_dir): ?>
+<div class="mobile-nav-backdrop" id="mobile-nav-backdrop" aria-hidden="true"></div>
+<?php endif; ?>
 
 <?php
 $site_announcement = null;
@@ -429,7 +417,7 @@ if ($site_announcement):
             <?php if ($site_announcement['link_url'] != ''): ?>
             <?php $announcement_href = safe_http_href($site_announcement['link_url']); ?>
             <?php if ($announcement_href != ''): ?>
-            <a href="<?php echo htmlspecialchars($announcement_href); ?>" class="site-announcement-link">Learn more</a>
+            <a href="<?php echo htmlspecialchars($announcement_href); ?>" class="site-announcement-link"><?php echo __('common.learn_more'); ?></a>
             <?php endif; ?>
             <?php endif; ?>
         </div>

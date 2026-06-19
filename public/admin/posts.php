@@ -18,27 +18,23 @@ if ($admin_post) {
         notify_post_status_change($pdo, $admin_post['id'], 'Published');
         log_activity($pdo, 'post.approved', 'Post #' . $admin_post['id']);
         setFlashMessage('success', 'Post approved and published.');
-        header('Location: posts.php');
-        exit;
+        admin_redirect_to('posts.php');
     }
     if ($admin_post['action'] == 'reject' && $admin_post['id'] > 0 && isAdmin()) {
         $pdo->prepare("UPDATE posts SET status = 'Rejected', updated_at = CURRENT_TIMESTAMP WHERE id = :id")->execute(array('id' => $admin_post['id']));
         notify_post_status_change($pdo, $admin_post['id'], 'Rejected');
         log_activity($pdo, 'post.rejected', 'Post #' . $admin_post['id']);
         setFlashMessage('info', 'Post rejected.');
-        header('Location: posts.php');
-        exit;
+        admin_redirect_to('posts.php');
     }
     if ($admin_post['action'] == 'duplicate' && $admin_post['id'] > 0) {
         $result = duplicate_author_post($pdo, $admin_post['id']);
         if ($result['ok']) {
             setFlashMessage('success', 'Post duplicated as draft.');
-            header('Location: posts.php?action=edit&id=' . (int) $result['id']);
-            exit;
+            admin_redirect_to('posts.php?action=edit&id=' . (int) $result['id']);
         }
         setFlashMessage('danger', $result['error']);
-        header('Location: posts.php');
-        exit;
+        admin_redirect_to('posts.php');
     }
     if ($admin_post['action'] == 'delete' && $admin_post['id'] > 0) {
         $stmt = $pdo->prepare('SELECT * FROM posts WHERE id = :id');
@@ -49,8 +45,7 @@ if ($admin_post) {
             log_activity($pdo, 'post.deleted', 'Post #' . $admin_post['id']);
             setFlashMessage('success', 'Post deleted.');
         }
-        header('Location: posts.php');
-        exit;
+        admin_redirect_to('posts.php');
     }
 }
 
@@ -93,8 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['bulk_action']) && isAd
             setFlashMessage('success', count($post_ids) . ' post(s) deleted.');
         }
     }
-    header('Location: posts.php');
-    exit;
+    admin_redirect_to('posts.php');
 }
 
 $errors = array();
@@ -138,6 +132,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
     $location = '';
     if (isset($_POST['location'])) {
         $location = trim($_POST['location']);
+    }
+
+    $latitude = '';
+    if (isset($_POST['latitude'])) {
+        $latitude = trim($_POST['latitude']);
+    }
+
+    $longitude = '';
+    if (isset($_POST['longitude'])) {
+        $longitude = trim($_POST['longitude']);
+    }
+
+    $expires_at_input = '';
+    if (isset($_POST['expires_at'])) {
+        $expires_at_input = trim($_POST['expires_at']);
+    }
+
+    $archive_on_expiry = 0;
+    if (isset($_POST['archive_on_expiry'])) {
+        $archive_on_expiry = 1;
+    }
+
+    $post_kind = 'general';
+    if (isset($_POST['post_kind'])) {
+        $post_kind = trim($_POST['post_kind']);
+    }
+
+    $knowledge_label = '';
+    if (isset($_POST['knowledge_label'])) {
+        $knowledge_label = trim($_POST['knowledge_label']);
+    }
+
+    $challenge_id = 0;
+    if (isset($_POST['challenge_id'])) {
+        $challenge_id = (int) $_POST['challenge_id'];
     }
 
     $is_featured = 0;
@@ -189,6 +218,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
     }
     if ($content == '') {
         $errors[] = 'Content is required';
+    }
+    if ($latitude !== '' && !is_numeric($latitude)) {
+        $errors[] = 'Latitude must be a valid number.';
+    }
+    if ($longitude !== '' && !is_numeric($longitude)) {
+        $errors[] = 'Longitude must be a valid number.';
+    }
+    $allowed_post_kinds = array('general', 'knowledge', 'event', 'alert');
+    if (!in_array($post_kind, $allowed_post_kinds, true)) {
+        $post_kind = 'general';
+    }
+    $allowed_knowledge_labels = array('', 'solved', 'useful', 'tutorial', 'verified');
+    if (!in_array($knowledge_label, $allowed_knowledge_labels, true)) {
+        $knowledge_label = '';
+    }
+    if ($post_kind != 'knowledge') {
+        $knowledge_label = '';
+    }
+    if ($challenge_id > 0) {
+        $challenge_check = $pdo->prepare('SELECT id FROM community_challenges WHERE id = :id LIMIT 1');
+        $challenge_check->execute(array('id' => $challenge_id));
+        if (!$challenge_check->fetch()) {
+            $challenge_id = 0;
+        }
+    }
+    $expires_at = null;
+    if ($expires_at_input != '') {
+        $expires_ts = strtotime($expires_at_input);
+        if ($expires_ts == false) {
+            $errors[] = 'Expiry date/time is not valid.';
+        } else {
+            $expires_at = date('Y-m-d H:i:s', $expires_ts);
+        }
     }
     if (isAdmin()) {
         if ($status != 'Draft' && $status != 'Published' && $status != 'Pending' && $status != 'Rejected' && $status != 'Deleted') {
@@ -266,6 +328,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
             'video_url' => $video_url,
             'video_type' => $vid_type,
             'location' => $location,
+            'latitude' => $latitude !== '' ? $latitude : null,
+            'longitude' => $longitude !== '' ? $longitude : null,
+            'expires_at' => $expires_at,
+            'archive_on_expiry' => $archive_on_expiry ? true : false,
+            'post_kind' => $post_kind,
+            'knowledge_label' => $knowledge_label,
+            'challenge_id' => $challenge_id > 0 ? $challenge_id : null,
             'is_featured' => $is_featured,
             'status' => $status,
         );
@@ -284,8 +353,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
                     $fields['slug'] = $fields['slug'] . '-' . time();
                 }
 
-                $sql = 'INSERT INTO posts (category_id, user_id, title, slug, summary, content, image_url, image_alt, video_url, video_type, location, is_featured, status)
-                        VALUES (:category_id, :user_id, :title, :slug, :summary, :content, :image_url, :image_alt, :video_url, :video_type, :location, :is_featured, :status)
+                $sql = 'INSERT INTO posts (category_id, user_id, title, slug, summary, content, image_url, image_alt, video_url, video_type, location, latitude, longitude, expires_at, archive_on_expiry, post_kind, knowledge_label, challenge_id, is_featured, status)
+                        VALUES (:category_id, :user_id, :title, :slug, :summary, :content, :image_url, :image_alt, :video_url, :video_type, :location, :latitude, :longitude, :expires_at, :archive_on_expiry, :post_kind, :knowledge_label, :challenge_id, :is_featured, :status)
                         RETURNING id';
                 $insert_stmt = $pdo->prepare($sql);
                 $insert_stmt->execute($fields);
@@ -320,6 +389,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
 
                 $sql = 'UPDATE posts SET category_id=:category_id, title=:title, slug=:slug, summary=:summary, content=:content,
                         image_url=:image_url, image_alt=:image_alt, video_url=:video_url, video_type=:video_type, location=:location,
+                        latitude=:latitude, longitude=:longitude, expires_at=:expires_at, archive_on_expiry=:archive_on_expiry,
+                        post_kind=:post_kind, knowledge_label=:knowledge_label, challenge_id=:challenge_id,
                         is_featured=:is_featured, status=:status, updated_at=CURRENT_TIMESTAMP WHERE id=:id';
                 $pdo->prepare($sql)->execute($update_fields);
                 if ($existing_post['status'] != $fields['status']) {
@@ -348,12 +419,17 @@ if ($action == 'edit' && $id > 0) {
     $post = $stmt->fetch();
     if (!$post || !admin_can_manage_post($post)) {
         setFlashMessage('danger', 'Post not found or access denied.');
-        header('Location: posts.php');
-        exit;
+        admin_redirect_to('posts.php');
     }
 }
 
-$all_categories = $pdo->query('SELECT id, name FROM categories ORDER BY name')->fetchAll();
+$all_categories = $pdo->query('SELECT id, name, icon FROM categories ORDER BY name')->fetchAll();
+$active_challenges = array();
+try {
+    $active_challenges = $pdo->query("SELECT id, title, status FROM community_challenges ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'draft' THEN 1 ELSE 2 END, title ASC")->fetchAll();
+} catch (PDOException $e) {
+    $active_challenges = array();
+}
 $page_title = 'Manage Posts';
 $admin_active = 'posts';
 require_once ROOT_PATH . '/app/Views/layouts/header.php';
@@ -371,7 +447,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                 <a href="posts.php" class="btn btn-outline-custom btn-sm">Back</a>
             </div>
             <?php if (count($errors) > 0): ?>
-            <div class="alert alert-danger"><ul class="mb-0 small"><?php foreach ($errors as $e): ?><li><?php echo htmlspecialchars($e); ?></li><?php endforeach; ?></ul></div>
+            <?php render_user_alerts($errors, 'danger'); ?>
             <?php endif; ?>
             <form method="POST" enctype="multipart/form-data" action="posts.php?action=<?php echo $action; ?><?php if ($id > 0) echo '&id=' . $id; ?>">
                 <?php echo csrf_field(); ?>
@@ -397,11 +473,13 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                                 <span><i class="fa-solid fa-plus"></i> Create New Category</span>
                             </label>
                         </div>
-                        <div id="existing-category-wrap" <?php if ($category_mode == 'new') echo 'style="display:none;"'; ?>>
-                            <select name="category_id" id="category_id" class="form-select form-control-custom">
-                                <option value="">— Select category —</option>
-                                <?php foreach ($all_categories as $c): ?>
-                                <option value="<?php echo $c['id']; ?>" <?php if ($post && $post['category_id'] == $c['id']) echo 'selected'; ?>><?php echo htmlspecialchars($c['name']); ?></option>
+                        <div id="existing-category-wrap" class="category-select-card" <?php if ($category_mode == 'new') echo 'style="display:none;"'; ?>>
+                            <select name="category_id" id="category_id" class="form-select form-control-custom" data-custom-select-enhanced="category">
+                                <option value="" data-icon="fa-layer-group">— Select category —</option>
+                                <?php foreach ($all_categories as $c):
+                                    $cat_icon = isset($c['icon']) && $c['icon'] != '' ? $c['icon'] : 'fa-tag';
+                                ?>
+                                <option value="<?php echo $c['id']; ?>" data-icon="<?php echo htmlspecialchars($cat_icon); ?>" <?php if ($post && $post['category_id'] == $c['id']) echo 'selected'; ?>><?php echo htmlspecialchars($c['name']); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -454,6 +532,78 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                         </div>
                     </div>
                     <?php endif; ?>
+                    <div class="col-12">
+                        <div class="glass-panel-sm p-3 border border-secondary border-opacity-25">
+                            <h6 class="text-white mb-3"><i class="fa-solid fa-sliders text-warning me-2"></i>Advanced Options</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label form-label-custom">Post Type</label>
+                                    <select name="post_kind" id="post_kind" class="form-select form-control-custom">
+                                        <?php
+                                        $current_kind = ($post && isset($post['post_kind'])) ? $post['post_kind'] : 'general';
+                                        $post_kind_options = array(
+                                            'general' => 'General',
+                                            'knowledge' => 'Knowledge / Tips',
+                                            'event' => 'Event',
+                                            'alert' => 'Alert',
+                                        );
+                                        foreach ($post_kind_options as $kind_value => $kind_label):
+                                        ?>
+                                        <option value="<?php echo htmlspecialchars($kind_value); ?>" <?php if ($current_kind === $kind_value) echo 'selected'; ?>><?php echo htmlspecialchars($kind_label); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-4" id="knowledge_label_wrap">
+                                    <label class="form-label form-label-custom">Knowledge Label</label>
+                                    <select name="knowledge_label" class="form-select form-control-custom">
+                                        <?php
+                                        $current_label = ($post && isset($post['knowledge_label'])) ? $post['knowledge_label'] : '';
+                                        $label_options = array('' => 'None', 'solved' => 'Solved', 'useful' => 'Useful', 'tutorial' => 'Tutorial', 'verified' => 'Verified');
+                                        foreach ($label_options as $label_value => $label_text):
+                                        ?>
+                                        <option value="<?php echo htmlspecialchars($label_value); ?>" <?php if ($current_label === $label_value) echo 'selected'; ?>><?php echo htmlspecialchars($label_text); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label form-label-custom">Community Challenge</label>
+                                    <select name="challenge_id" class="form-select form-control-custom">
+                                        <option value="0">— None —</option>
+                                        <?php foreach ($active_challenges as $challenge): ?>
+                                        <option value="<?php echo (int) $challenge['id']; ?>" <?php if ($post && (int) $post['challenge_id'] === (int) $challenge['id']) echo 'selected'; ?>>
+                                            <?php echo htmlspecialchars($challenge['title']); ?><?php if ($challenge['status'] != 'active') echo ' (' . htmlspecialchars($challenge['status']) . ')'; ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label form-label-custom">Latitude</label>
+                                    <input type="text" name="latitude" class="form-control form-control-custom" placeholder="11.5564" value="<?php if ($post && isset($post['latitude']) && $post['latitude'] !== null && $post['latitude'] !== '') echo htmlspecialchars($post['latitude']); ?>">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label form-label-custom">Longitude</label>
+                                    <input type="text" name="longitude" class="form-control form-control-custom" placeholder="104.9282" value="<?php if ($post && isset($post['longitude']) && $post['longitude'] !== null && $post['longitude'] !== '') echo htmlspecialchars($post['longitude']); ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label form-label-custom">Expires At</label>
+                                    <?php
+                                    $expires_at_value = '';
+                                    if ($post && !empty($post['expires_at'])) {
+                                        $expires_at_value = date('Y-m-d\TH:i', strtotime($post['expires_at']));
+                                    }
+                                    ?>
+                                    <input type="datetime-local" name="expires_at" class="form-control form-control-custom" value="<?php echo htmlspecialchars($expires_at_value); ?>">
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" name="archive_on_expiry" id="archive_on_expiry" <?php if (!$post || !isset($post['archive_on_expiry']) || $post['archive_on_expiry']) echo 'checked'; ?>>
+                                        <label class="form-check-label text-secondary small" for="archive_on_expiry">Auto-archive</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-secondary small mb-0 mt-2">Use coordinates for map/nearby features. Expired posts auto-archive when enabled.</p>
+                        </div>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label form-label-custom">Image</label>
                         <?php
@@ -475,6 +625,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                             ?></span>
                             <input type="file" name="image" id="image_input" class="file-upload-input" accept="image/*">
                         </div>
+                        <div class="form-text text-secondary small">JPG, PNG, WEBP, or GIF — max 5 MB</div>
                         <?php if ($current_image != '' && post_media_available($current_image, '')): ?>
                         <div class="mt-2">
                             <img src="<?php echo htmlspecialchars(resolve_media_src($current_image, '')); ?>" alt="Current post image" class="rounded" style="max-width:180px;max-height:120px;object-fit:cover;">
@@ -517,6 +668,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                             ?></span>
                             <input type="file" name="video_file" id="video_file" class="file-upload-input" accept="video/mp4,video/webm">
                         </div>
+                        <div class="form-text text-secondary small">MP4, WEBM, or MOV — max 500 MB, up to 6 minutes</div>
                         <input type="url" name="youtube_url" id="youtube_url" class="form-control form-control-custom" placeholder="https://youtube.com/watch?v=..."
                             value="<?php if ($post_vtype == 'youtube' && $post && isset($post['video_url'])) echo htmlspecialchars($post['video_url']); ?>">
                     </div>
@@ -679,6 +831,17 @@ if (previewBtn && typeof bootstrap !== 'undefined') {
         previewModal.show();
     });
 }
+
+(function() {
+    var postKind = document.getElementById('post_kind');
+    var knowledgeWrap = document.getElementById('knowledge_label_wrap');
+    if (!postKind || !knowledgeWrap) return;
+    function syncKnowledgeField() {
+        knowledgeWrap.style.display = postKind.value === 'knowledge' ? '' : 'none';
+    }
+    postKind.addEventListener('change', syncKnowledgeField);
+    syncKnowledgeField();
+})();
 </script>
 <?php else: ?>
 <div class="glass-panel p-4">
@@ -776,8 +939,10 @@ if (previewBtn && typeof bootstrap !== 'undefined') {
                 <label class="form-label form-label-custom small mb-1">Category</label>
                 <select name="category" class="form-select form-control-custom">
                     <option value="">All categories</option>
-                    <?php foreach ($all_categories as $cat_opt): ?>
-                    <option value="<?php echo (int) $cat_opt['id']; ?>" <?php if ($list_category == (int) $cat_opt['id']) echo 'selected'; ?>>
+                    <?php foreach ($all_categories as $cat_opt):
+                        $filter_icon = isset($cat_opt['icon']) && $cat_opt['icon'] != '' ? $cat_opt['icon'] : 'fa-tag';
+                    ?>
+                    <option value="<?php echo (int) $cat_opt['id']; ?>" data-icon="<?php echo htmlspecialchars($filter_icon); ?>" <?php if ($list_category == (int) $cat_opt['id']) echo 'selected'; ?>>
                         <?php echo htmlspecialchars($cat_opt['name']); ?>
                     </option>
                     <?php endforeach; ?>

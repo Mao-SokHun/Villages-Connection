@@ -5,8 +5,7 @@ $email = '';
 $errors = array();
 
 if (isLoggedIn()) {
-    header('Location: index.php');
-    exit;
+    redirect_to('index.php');
 }
 
 if (isset($_SESSION['reset_email'])) {
@@ -16,14 +15,13 @@ if (isset($_SESSION['reset_email'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
 
-    $email_key = 'email:guest';
     if (isset($_POST['email'])) {
-        $email_key = 'email:' . strtolower(trim($_POST['email']));
+        $email_key = 'email:' . normalize_email($_POST['email']);
     }
     enforce_rate_limit_or_exit('reset_otp_verify', client_rate_limit_id() . '|' . $email_key, 5, 900, false);
 
     if (isset($_POST['email'])) {
-        $email = trim($_POST['email']);
+        $email = normalize_email($_POST['email']);
     }
 
     $otp = '';
@@ -71,8 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             unset($_SESSION['reset_email']);
 
             setFlashMessage('success', 'Password reset successful. Please sign in with your new password.');
-            header('Location: login.php');
-            exit;
+            redirect_to('login.php');
         }
     }
 }
@@ -99,13 +96,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         </div>
 
                         <?php if (count($errors) > 0): ?>
-                        <div class="alert alert-danger">
-                            <ul class="mb-0 small">
-                                <?php foreach ($errors as $error): ?>
-                                <li><?php echo htmlspecialchars($error); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
+                        <?php render_user_alerts($errors, 'danger'); ?>
                         <?php endif; ?>
 
                         <form action="reset-password.php" method="POST">

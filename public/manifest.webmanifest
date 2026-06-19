@@ -1,26 +1,26 @@
 {
   "name": "Village Connect",
   "short_name": "Village",
-  "description": "Community news, posts, and village stories.",
-  "start_url": "/index.php",
+  "description": "Building Stronger Communities Together",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "lang": "km",
+  "lang": "en",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icons/icon-192.svg",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-192.svg",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

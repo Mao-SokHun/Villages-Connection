@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Create Post | Connect</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#e0e0ff",
+                    "secondary-fixed-dim": "#c4c7c9",
+                    "primary-fixed": "#e1e0ff",
+                    "on-background": "#0b1c30",
+                    "surface-container-highest": "#d3e4fe",
+                    "outline-variant": "#c7c4d7",
+                    "secondary": "#5c5f61",
+                    "outline": "#767586",
+                    "primary": "#4648d4",
+                    "tertiary-container": "#606ad4",
+                    "background": "#f8f9ff",
+                    "surface-tint": "#494bd6",
+                    "on-tertiary-container": "#fffbff",
+                    "on-secondary-fixed-variant": "#444749",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#2f3aa3",
+                    "on-primary-fixed": "#07006c",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-dim": "#cbdbf5",
+                    "error-container": "#ffdad6",
+                    "inverse-surface": "#213145",
+                    "surface-container": "#e5eeff",
+                    "primary-container": "#6063ee",
+                    "on-primary-container": "#fffbff",
+                    "surface-container-low": "#eff4ff",
+                    "on-secondary-container": "#626567",
+                    "secondary-container": "#e0e3e5",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface-bright": "#f8f9ff",
+                    "on-tertiary-fixed": "#000767",
+                    "inverse-primary": "#c0c1ff",
+                    "on-surface": "#0b1c30",
+                    "on-secondary-fixed": "#191c1e",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#d3e4fe",
+                    "primary-fixed-dim": "#c0c1ff",
+                    "tertiary-fixed-dim": "#bdc2ff",
+                    "on-error": "#ffffff",
+                    "surface": "#f8f9ff",
+                    "on-surface-variant": "#464554",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed-variant": "#2f2ebe",
+                    "secondary-fixed": "#e0e3e5",
+                    "surface-container-high": "#dce9ff",
+                    "tertiary": "#4651b9",
+                    "on-error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "base": "4px",
+                    "xl": "32px",
+                    "xs": "8px",
+                    "sm": "12px",
+                    "lg": "24px",
+                    "gutter": "16px",
+                    "margin-desktop": "40px",
+                    "margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Outfit"],
+                    "label-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Outfit"],
+                    "body-lg": ["Inter"],
+                    "headline-lg-mobile": ["Outfit"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e0e3e5;
+            border-radius: 10px;
+        }
+
+        /* Interaction micro-animations */
+        .tap-active:active {
+            transform: scale(0.96);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-md overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top Navigation (Shell Implementation) -->
+<header class="fixed top-0 left-0 right-0 h-14 flex items-center justify-between px-margin-mobile z-50 glass-panel shadow-sm">
+<button class="flex items-center gap-xs text-secondary hover:text-primary transition-colors tap-active">
+<span class="material-symbols-outlined">close</span>
+<span class="font-label-md text-label-md">Cancel</span>
+</button>
+<h1 class="font-headline-md text-headline-md-mobile font-bold text-primary">New Post</h1>
+<button class="bg-primary text-on-primary px-lg py-xs rounded-full font-label-md text-label-md shadow-lg shadow-primary/20 hover:bg-primary-container transition-all tap-active">
+            Post
+        </button>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-14 pb-xl px-margin-mobile max-w-2xl mx-auto">
+<!-- Media Upload Area -->
+<section class="mt-lg">
+<div class="relative w-full aspect-square md:aspect-video rounded-xl overflow-hidden group cursor-pointer bg-surface-container-low shadow-[0_8px_30px_rgba(99,102,241,0.08)] border border-outline-variant/30 transition-all hover:border-primary/40">
+<div class="absolute inset-0 flex flex-col items-center justify-center gap-md text-secondary group-hover:text-primary transition-colors">
+<div class="w-16 h-16 rounded-full bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'wght' 300;">add_a_photo</span>
+</div>
+<div class="text-center">
+<p class="font-headline-md text-headline-md-mobile">Tap to upload</p>
+<p class="font-body-sm text-body-sm opacity-60">Photos or Videos (Max 100MB)</p>
+</div>
+</div>
+<!-- Example background shader for atmosphere -->
+
+<!-- Hidden overlay for drag and drop simulation -->
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<div class="p-xl border-2 border-dashed border-primary rounded-xl w-[90%] h-[90%] pointer-events-none"></div>
+</div>
+</div>
+</section>
+<!-- Caption Field -->
+<section class="mt-lg">
+<div class="glass-panel p-md rounded-xl shadow-[0_8px_30px_rgba(99,102,241,0.08)]">
+<div class="flex items-start gap-md">
+<div class="w-10 h-10 rounded-full border-2 border-white shadow-sm overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a young creative professional with a friendly smile, clean modern lighting, minimalist aesthetic with soft indigo and white background accents, high resolution photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWzBz_BmqmHAH6S0RkTROTgOYRZT79eAe9RmEbJ0IjVGpcUI3yiA03SXynUnkGTd-wqxAzzIXVuExbnkHrCeMIeqlQxVlwFlkkgAA_CUTMTRRzmvRHEHIvla3xXQDBCeaKnZHb3hTABDnG8w_AwO3elOFnkpMW0JdsVldfbVvyxSMWWAHpM6IiT5_KxM0U_dNUW3ui_o2E_un6mqqgyfjC3fttowhibzmaGfIJb8fU5HhPg-reBo3ybcGn7W8jxUVeFl9RMGo"/>
+</div>
+<div class="flex-grow">
+<textarea class="w-full bg-transparent border-none focus:ring-0 font-body-md text-on-surface p-0 min-h-[120px] resize-none custom-scrollbar" placeholder="Write a caption..."></textarea>
+</div>
+</div>
+<!-- Text Formatting / Extras Bar -->
+<div class="flex items-center justify-between mt-sm pt-sm border-t border-outline-variant/10">
+<div class="flex gap-sm text-secondary">
+<button class="p-xs hover:text-primary transition-colors tap-active"><span class="material-symbols-outlined">alternate_email</span></button>
+<button class="p-xs hover:text-primary transition-colors tap-active"><span class="material-symbols-outlined">tag</span></button>
+<button class="p-xs hover:text-primary transition-colors tap-active"><span class="material-symbols-outlined">mood</span></button>
+</div>
+<span class="text-label-md font-label-md text-secondary opacity-40">0 / 2200</span>
+</div>
+</div>
+</section>
+<!-- Toggle Controls / Options -->
+<section class="mt-lg space-y-sm">
+<!-- Location Toggle -->
+<div class="glass-panel px-md py-sm rounded-xl flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">location_on</span>
+</div>
+<div>
+<p class="font-body-md text-on-surface">Add Location</p>
+<p class="font-body-sm text-secondary text-xs">Share where this was captured</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<!-- Tag People Toggle -->
+<div class="glass-panel px-md py-sm rounded-xl flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">person_add</span>
+</div>
+<div>
+<p class="font-body-md text-on-surface">Tag People</p>
+<p class="font-body-sm text-secondary text-xs">Mention your friends</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<!-- Audience Control -->
+<div class="glass-panel px-md py-sm rounded-xl flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">public</span>
+</div>
+<div>
+<p class="font-body-md text-on-surface">Audience</p>
+<p class="font-body-sm text-secondary text-xs">Everyone</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">settings</span>
+</div>
+</section>
+<!-- Advanced Settings Suggestion -->
+<div class="mt-xl text-center">
+<button class="font-label-md text-label-md text-secondary hover:text-primary transition-colors flex items-center gap-xs mx-auto tap-active">
+                Advanced Settings
+                <span class="material-symbols-outlined text-[16px]">info</span>
+</button>
+</div>
+</main>
+<!-- Bottom Action Sheet (Mobile focused context) -->
+<div class="md:hidden fixed bottom-6 left-margin-mobile right-margin-mobile z-50">
+<!-- Drafts indicator -->
+<div class="flex justify-center mb-md">
+<div class="glass-panel px-md py-xs rounded-full border border-primary/20 shadow-lg flex items-center gap-xs animate-bounce">
+<span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 1;">drafts</span>
+<span class="text-[10px] font-bold text-primary uppercase tracking-wider">Draft Saved</span>
+</div>
+</div>
+</div>
+<!-- Decorative atmospheric elements -->
+<div class="fixed top-1/4 -right-20 w-64 h-64 bg-primary/10 blur-[100px] rounded-full -z-10"></div>
+<div class="fixed bottom-1/4 -left-20 w-80 h-80 bg-tertiary-container/10 blur-[120px] rounded-full -z-10"></div>
+<script>
+        // Simple micro-interactions for the UI
+        document.addEventListener('DOMContentLoaded', () => {
+            const textarea = document.querySelector('textarea');
+            const charCount = document.querySelector('.text-label-md.text-secondary');
+            
+            textarea.addEventListener('input', (e) => {
+                const length = e.target.value.length;
+                charCount.textContent = `${length} / 2200`;
+                
+                if (length > 2200) {
+                    charCount.classList.add('text-error');
+                } else {
+                    charCount.classList.remove('text-error');
+                }
+                
+                // Auto-expand textarea
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            });
+
+            // Handle Post Button Click
+            const postBtn = document.querySelector('button.bg-primary');
+            postBtn.addEventListener('click', () => {
+                postBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">sync</span>`;
+                postBtn.classList.add('opacity-70', 'pointer-events-none');
+                
+                setTimeout(() => {
+                    postBtn.innerHTML = `<span class="material-symbols-outlined">check</span>`;
+                    postBtn.classList.replace('bg-primary', 'bg-green-500');
+                    alert('Post successfully created!');
+                }, 1500);
+            });
+        });
+    </script>
+</body></html>

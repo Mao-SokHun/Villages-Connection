@@ -1,22 +1,16 @@
 <?php
 
-define('ROOT_PATH', __DIR__);
-define('APP_PATH', ROOT_PATH . '/app');
-define('PUBLIC_PATH', ROOT_PATH . '/public');
-define('STORAGE_PATH', ROOT_PATH . '/storage');
+require_once __DIR__ . '/app/bootstrap/paths.php';
 define('BOOTSTRAP_LITE', true);
 
-require_once ROOT_PATH . '/config/config.php';
+require_once CONFIG_PATH . '/config.php';
 if (file_exists(ROOT_PATH . '/vendor/autoload.php')) {
     require_once ROOT_PATH . '/vendor/autoload.php';
 }
-require_once ROOT_PATH . '/config/database.php';
-require_once APP_PATH . '/Core/helpers.php';
-require_once APP_PATH . '/Core/permissions.php';
-require_once APP_PATH . '/Core/admin.php';
-require_once APP_PATH . '/Core/member.php';
-require_once APP_PATH . '/Core/features.php';
-require_once APP_PATH . '/Core/push.php';
+require_once CONFIG_PATH . '/database.php';
+
+require_once APP_PATH . '/bootstrap/core.php';
+bootstrap_load_core_modules(true);
 
 load_admin_settings($pdo);
 

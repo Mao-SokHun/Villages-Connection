@@ -3,14 +3,12 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once APP_PATH . '/Core/oauth.php';
 
 if (isLoggedIn()) {
-    header('Location: ../index.php');
-    exit;
+    redirect_to('index.php');
 }
 
 if (!oauth_is_configured('google')) {
     setFlashMessage('warning', 'Google login is not configured yet.');
-    header('Location: ../login.php');
-    exit;
+    redirect_to('login.php');
 }
 
 header('Location: ' . google_auth_url());

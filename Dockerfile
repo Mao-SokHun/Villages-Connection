@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     git \
+    ffmpeg \
     && docker-php-ext-install pdo pdo_pgsql pgsql curl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 

@@ -177,13 +177,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
             </div>
 
             <?php if (count($errors) > 0): ?>
-            <div class="alert alert-danger">
-                <ul class="mb-0 small">
-                    <?php foreach ($errors as $error): ?>
-                    <li><?php echo htmlspecialchars($error); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+            <?php render_user_alerts($errors, 'danger'); ?>
             <?php endif; ?>
 
             <form method="POST" action="categories.php?action=<?php echo $action; ?><?php if ($id > 0) echo '&id=' . $id; ?>">

@@ -17,4 +17,3 @@ openssl req -x509 -nodes -days 825 -newkey rsa:2048 `
 
 Write-Host "Optional dev HTTPS certs created."
 Write-Host "Local dev uses HTTP: http://localhost:8080"
-Write-Host "Production HTTPS: docker-compose.prod.yml + scripts/oracle-enable-https.sh"

@@ -35,6 +35,11 @@ function search_posts($pdo, $query, $options = array())
         OR c.name ILIKE :search
     )";
 
+    if (!empty($options['category'])) {
+        $where .= ' AND c.slug = :category';
+        $params['category'] = trim((string) $options['category']);
+    }
+
     $count_sql = 'SELECT COUNT(*) FROM posts p
         LEFT JOIN categories c ON c.id = p.category_id
         LEFT JOIN users u ON u.id = p.user_id' . $where;
@@ -70,6 +75,22 @@ function search_posts($pdo, $query, $options = array())
         'per_page' => $per_page,
         'pages' => $total > 0 ? (int) ceil($total / $per_page) : 1,
     );
+}
+
+function get_featured_posts($pdo, $limit = 3)
+{
+    $limit = max(1, min(12, (int) $limit));
+    $sql = "SELECT p.*, c.name as category_name, c.slug as category_slug, c.icon as category_icon, u.name as author_name
+        FROM posts p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN users u ON p.user_id = u.id
+        WHERE p.status = 'Published'
+          AND p.is_featured = TRUE
+          AND (p.expires_at IS NULL OR p.expires_at > CURRENT_TIMESTAMP)" .
+        sql_hide_inactive_authors('u') .
+        ' ORDER BY p.updated_at DESC, p.id DESC LIMIT ' . $limit;
+
+    return $pdo->query($sql)->fetchAll();
 }
 
 function search_authors($pdo, $query, $limit = 8)
@@ -185,7 +206,7 @@ function create_post_comment($pdo, $post_id, $user_id, $author_name, $content, $
     return array('ok' => true, 'id' => $comment_id, 'status' => $status);
 }
 
-function notify_comment_reply($pdo, $parent_comment_id, $replier_name, $post_slug)
+function notify_comment_reply($pdo, $parent_comment_id, $replier_name, $post_slug, $post_title = '', $reply_comment_id = 0)
 {
     $parent = get_comment_by_id($pdo, (int) $parent_comment_id);
     if (!$parent || !$parent['user_id']) {
@@ -196,13 +217,25 @@ function notify_comment_reply($pdo, $parent_comment_id, $replier_name, $post_slu
         return;
     }
 
+    $safe_post_title = trim((string) $post_title);
+    if ($safe_post_title == '') {
+        $safe_post_title = 'your post';
+    } else {
+        $safe_post_title = '"' . excerpt($safe_post_title, 48) . '"';
+    }
+    $link = 'post/' . rawurlencode($post_slug) . '#comment-' . (int) $parent_comment_id;
+    if ((int) $reply_comment_id > 0) {
+        $link = 'post/' . rawurlencode($post_slug) . '#comment-' . (int) $reply_comment_id;
+    }
+
     create_notification(
         $pdo,
         (int) $parent['user_id'],
         'comment_reply',
-        'New reply to your comment',
-        $replier_name . ' replied to your comment.',
-        'post/' . rawurlencode($post_slug) . '#comment-' . (int) $parent_comment_id
+        'New reply on ' . $safe_post_title,
+        $replier_name . ' replied to your comment on ' . $safe_post_title . '.',
+        $link,
+        true
     );
 }
 

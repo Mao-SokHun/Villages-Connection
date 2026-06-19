@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
+require_once APP_PATH . '/Core/analytics.php';
+require_once APP_PATH . '/Core/backup.php';
 requireAdmin();
 
 $days = 30;

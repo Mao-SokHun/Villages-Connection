@@ -6,14 +6,12 @@ $email = '';
 $errors = array();
 
 if (isLoggedIn()) {
-    header('Location: index.php');
-    exit;
+    redirect_to('index.php');
 }
 
 if (!registration_is_enabled()) {
     setFlashMessage('warning', 'New registrations are currently disabled.');
-    header('Location: login.php');
-    exit;
+    redirect_to('login.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -28,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $name = sanitize_plain_text_field($_POST['name'], 80);
     }
     if (isset($_POST['email'])) {
-        $email = trim($_POST['email']);
+        $email = normalize_email($_POST['email']);
     }
 
     $password = '';
@@ -58,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (count($errors) == 0) {
-        $sql = 'SELECT COUNT(*) FROM users WHERE email = :email';
+        $sql = 'SELECT COUNT(*) FROM users WHERE LOWER(email) = :email';
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array('email' => $email));
         $count = $stmt->fetchColumn();
@@ -84,16 +82,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (email_verification_required()) {
                 issue_verification_for_new_user($pdo, $new_id);
                 setFlashMessage('info', __('auth.check_email_verify'));
-                header('Location: resend-verification.php');
-                exit;
+                redirect_to('resend-verification.php');
             }
 
             mark_user_email_verified($pdo, $new_id);
             login_user_session($user);
             send_welcome_email($email, $name);
             setFlashMessage('success', 'Welcome to ' . SITE_NAME . ', ' . $name . '! Create your first post to get started.');
-            header('Location: admin/posts.php?action=add');
-            exit;
+            admin_redirect_to('posts.php?action=add');
         }
     }
 }
@@ -129,16 +125,10 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         </div>
 
                         <?php if (count($errors) > 0): ?>
-                            <div class="alert alert-danger" role="alert">
-                                <ul class="mb-0 small">
-                                    <?php foreach ($errors as $error): ?>
-                                        <li><?php echo htmlspecialchars($error); ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
+                            <?php render_user_alerts($errors, 'danger'); ?>
                         <?php endif; ?>
 
-                        <form action="register.php" method="POST" id="register_form">
+                        <form action="<?php echo app_url('register.php'); ?>" method="POST" id="register_form">
                             <?php echo csrf_field(); ?>
                             <div class="mb-3">
                                 <label for="name" class="form-label form-label-custom">Full Name</label>
@@ -150,18 +140,22 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                             </div>
                             <div class="mb-3">
                                 <label for="password" class="form-label form-label-custom">Password</label>
-                                <input type="password" name="password" id="password" class="form-control form-control-custom" minlength="8" autocomplete="new-password" required>
+                                <div class="password-input-wrap">
+                                    <input type="password" name="password" id="password" class="form-control form-control-custom" minlength="8" autocomplete="new-password" required>
+                                </div>
                                 <div class="form-text text-secondary small"><i class="fa-solid fa-shield-halved me-1"></i>At least 8 characters for security</div>
                             </div>
                             <div class="mb-3">
                                 <label for="confirm_password" class="form-label form-label-custom">Confirm Password</label>
-                                <input type="password" name="confirm_password" id="confirm_password" class="form-control form-control-custom" minlength="8" autocomplete="new-password" required>
+                                <div class="password-input-wrap">
+                                    <input type="password" name="confirm_password" id="confirm_password" class="form-control form-control-custom" minlength="8" autocomplete="new-password" required>
+                                </div>
                             </div>
                             <div class="mb-4">
                                 <div class="form-check auth-terms-check">
                                     <input class="form-check-input" type="checkbox" name="agree_terms" value="1" id="agree_terms">
                                     <label class="form-check-label text-secondary small" for="agree_terms">
-                                        I agree to the <a href="terms.php" class="text-warning" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.php" class="text-warning" target="_blank" rel="noopener">Privacy Policy</a>
+                                        I agree to the <a href="<?php echo app_url('terms.php'); ?>" class="text-warning" target="_blank" rel="noopener">Terms of Service</a> and <a href="<?php echo app_url('privacy.php'); ?>" class="text-warning" target="_blank" rel="noopener">Privacy Policy</a>
                                     </label>
                                 </div>
                             </div>
@@ -176,7 +170,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
 
                         <div class="text-center mt-4">
                             <span class="text-secondary small">Already have an account?</span>
-                            <a href="login.php" class="text-warning small text-decoration-none ms-1 fw-semibold">Sign In</a>
+                            <a href="<?php echo app_url('login.php'); ?>" class="text-warning small text-decoration-none ms-1 fw-semibold">Sign In</a>
                         </div>
                     </div>
                 </div>

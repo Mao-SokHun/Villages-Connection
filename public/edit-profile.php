@@ -5,8 +5,7 @@ requireLogin();
 $user = get_user_by_id($pdo, $_SESSION['user_id']);
 if (!$user) {
     perform_logout('danger', 'Account not found.');
-    header('Location: login.php');
-    exit;
+    redirect_to('login.php');
 }
 
 $page_title = 'Edit Profile';
@@ -19,9 +18,6 @@ $bio = '';
 $location = '';
 $website = '';
 $avatar = '';
-$avatar_url_input = '';
-$ui_theme = 'system';
-$ui_density = 'comfortable';
 
 if (isset($user['bio'])) {
     $bio = $user['bio'];
@@ -34,19 +30,11 @@ if (isset($user['website'])) {
 }
 if (isset($user['avatar'])) {
     $avatar = $user['avatar'];
-    if (is_external_avatar($avatar)) {
-        $avatar_url_input = $avatar;
-    }
-}
-if (isset($user['ui_theme']) && ($user['ui_theme'] == 'light' || $user['ui_theme'] == 'dark' || $user['ui_theme'] == 'system')) {
-    $ui_theme = $user['ui_theme'];
-}
-if (isset($user['ui_density']) && ($user['ui_density'] == 'compact' || $user['ui_density'] == 'comfortable')) {
-    $ui_density = $user['ui_density'];
 }
 
 $is_oauth_user = is_oauth_user($user);
 $email_is_managed = user_has_managed_email($user);
+$can_edit_email = !$is_oauth_user || $email_is_managed;
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     require_valid_csrf();
@@ -54,12 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['name'])) {
         $name = sanitize_plain_text_field($_POST['name'], 80);
     }
-    if ($email_is_managed) {
-        $email = $user['email'];
-    } elseif ($is_oauth_user) {
+    if (!$can_edit_email) {
         $email = $user['email'];
     } elseif (isset($_POST['email'])) {
-        $email = trim($_POST['email']);
+        $email = normalize_email($_POST['email']);
     }
     if (isset($_POST['bio'])) {
         $bio = trim($_POST['bio']);
@@ -69,15 +55,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     if (isset($_POST['website'])) {
         $website = trim($_POST['website']);
-    }
-    if (isset($_POST['avatar_url'])) {
-        $avatar_url_input = trim($_POST['avatar_url']);
-    }
-    if (isset($_POST['ui_theme'])) {
-        $ui_theme = trim($_POST['ui_theme']);
-    }
-    if (isset($_POST['ui_density'])) {
-        $ui_density = trim($_POST['ui_density']);
     }
 
     $current_password = '';
@@ -98,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($name == '') {
         $errors[] = 'Name is required.';
     }
-    if (!$email_is_managed && !$is_oauth_user && ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL))) {
+    if ($can_edit_email && ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL))) {
         $errors[] = 'Please enter a valid email address.';
     }
     if (strlen($bio) > 500) {
@@ -106,20 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     if ($website != '' && !filter_var($website, FILTER_VALIDATE_URL)) {
         $errors[] = 'Website must be a valid URL (include https://).';
-    }
-    if ($avatar_url_input != '') {
-        $safe_avatar_url = safe_http_href($avatar_url_input);
-        if ($safe_avatar_url == '') {
-            $errors[] = 'Profile photo link must be a valid http/https URL.';
-        } else {
-            $avatar_url_input = $safe_avatar_url;
-        }
-    }
-    if ($ui_theme != 'system' && $ui_theme != 'light' && $ui_theme != 'dark') {
-        $errors[] = 'Theme preference is invalid.';
-    }
-    if ($ui_density != 'comfortable' && $ui_density != 'compact') {
-        $errors[] = 'Layout density is invalid.';
     }
 
     if ($new_password != '' || $confirm_password != '' || $current_password != '') {
@@ -136,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if (count($errors) == 0 && !$email_is_managed && !$is_oauth_user && $email != $user['email']) {
-        $sql = 'SELECT COUNT(*) FROM users WHERE email = :email AND id != :id';
+    if (count($errors) == 0 && $can_edit_email && normalize_email($email) != normalize_email($user['email'])) {
+        $sql = 'SELECT COUNT(*) FROM users WHERE LOWER(email) = :email AND id != :id';
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array('email' => $email, 'id' => $user['id']));
         if ($stmt->fetchColumn() > 0) {
@@ -147,26 +110,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $new_avatar = $avatar;
     if (count($errors) == 0) {
-        $has_upload = isset($_FILES['avatar']) && upload_file_selected($_FILES['avatar']);
-        $has_url = ($avatar_url_input != '');
-        if ($has_upload && $has_url) {
-            $errors[] = 'Choose one avatar source: upload from device OR photo link.';
-        }
-    }
-
-    if (count($errors) == 0) {
-        if (isset($_POST['remove_avatar']) && $_POST['remove_avatar'] == '1' && !$has_upload && !$has_url) {
+        if (isset($_POST['remove_avatar']) && $_POST['remove_avatar'] == '1') {
             if ($avatar != '') {
-                if (!is_external_avatar($avatar)) {
-                    delete_upload($avatar, 'avatars');
-                }
-            }
-            $new_avatar = '';
-        } elseif ($has_url) {
-            if ($avatar != '' && !is_external_avatar($avatar)) {
                 delete_upload($avatar, 'avatars');
             }
-            $new_avatar = $avatar_url_input;
+            $new_avatar = '';
         } elseif (isset($_FILES['avatar'])) {
             $up = handle_avatar_upload($_FILES['avatar'], $avatar);
             if ($up['ok'] == false) {
@@ -180,7 +128,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (count($errors) == 0) {
-        $sql = 'UPDATE users SET name = :name, email = :email, bio = :bio, location = :location, website = :website, avatar = :avatar, ui_theme = :ui_theme, ui_density = :ui_density, updated_at = CURRENT_TIMESTAMP';
+        $old_email = $user['email'];
+        $sql = 'UPDATE users SET name = :name, email = :email, bio = :bio, location = :location, website = :website, avatar = :avatar, updated_at = CURRENT_TIMESTAMP';
         $params = array(
             'name' => $name,
             'email' => $email,
@@ -188,8 +137,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             'location' => $location,
             'website' => $website,
             'avatar' => $new_avatar,
-            'ui_theme' => $ui_theme,
-            'ui_density' => $ui_density,
             'id' => $user['id']
         );
 
@@ -202,9 +149,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
 
+        require_once APP_PATH . '/Core/verification.php';
+        $verification_sent = issue_verification_on_email_change($pdo, (int) $user['id'], $old_email, $email);
+
         refresh_user_session($pdo, $user['id']);
-        setFlashMessage('success', 'Profile updated successfully.');
-        header('Location: profile.php');
+        if ($verification_sent) {
+            setFlashMessage('info', __('auth.check_email_verify'));
+            redirect_to('resend-verification.php');
+        } else {
+            setFlashMessage('success', 'Profile updated successfully.');
+            header('Location: ' . profile_url((int) $_SESSION['user_id']));
+        }
         exit;
     }
 
@@ -229,18 +184,11 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <h2 class="text-white mb-1"><i class="fa-solid fa-user-pen text-warning me-2"></i>Edit Profile</h2>
                     <p class="text-secondary small mb-0">Update your account details and public profile</p>
                 </div>
-
-                <a href="<?php echo app_url('profile.php'); ?>" class="btn btn-outline-custom btn-sm">Back to Profile</a>
+                <a href="<?php echo profile_url((int) $_SESSION['user_id']); ?>" class="btn btn-outline-custom btn-sm">Back to Profile</a>
             </div>
 
             <?php if (count($errors) > 0): ?>
-            <div class="alert alert-danger">
-                <ul class="mb-0 small">
-                    <?php foreach ($errors as $error): ?>
-                    <li><?php echo htmlspecialchars($error); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+            <?php render_user_alerts($errors, 'danger'); ?>
             <?php endif; ?>
 
             <form method="POST" enctype="multipart/form-data" action="<?php echo app_url('edit-profile.php'); ?>">
@@ -264,23 +212,22 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <label class="form-label form-label-custom">Full Name *</label>
                         <input type="text" name="name" class="form-control form-control-custom" required value="<?php echo htmlspecialchars($name); ?>">
                     </div>
-                    <?php if ($email_is_managed): ?>
+                    <?php if ($can_edit_email): ?>
                     <div class="col-md-6">
-                        <label class="form-label form-label-custom">Account</label>
-                        <input type="text" class="form-control form-control-custom" value="<?php echo htmlspecialchars(user_account_subtitle($user)); ?>" readonly>
-                        <div class="form-text text-secondary small"><?php echo htmlspecialchars(oauth_provider_label(resolve_oauth_provider($user) ?: 'Facebook')); ?> did not share an email. Your account uses social login only.</div>
+                        <label class="form-label form-label-custom">Email *</label>
+                        <input type="email" name="email" class="form-control form-control-custom" required value="<?php echo htmlspecialchars($email); ?>">
+                        <?php if ($email_is_managed): ?>
+                        <div class="form-text text-secondary small">
+                            <?php echo htmlspecialchars(oauth_provider_label(resolve_oauth_provider($user) ?: 'Facebook')); ?> did not share your email. Add one to receive OTP and activity emails.
+                        </div>
+                        <?php endif; ?>
                     </div>
-                    <?php elseif ($is_oauth_user): ?>
+                    <?php else: ?>
                     <div class="col-md-6">
                         <label class="form-label form-label-custom">Email</label>
                         <input type="email" class="form-control form-control-custom" value="<?php echo htmlspecialchars($email); ?>" readonly>
                         <input type="hidden" name="email" value="<?php echo htmlspecialchars($email); ?>">
                         <div class="form-text text-secondary small">Email is linked to your <?php echo htmlspecialchars(oauth_provider_label(resolve_oauth_provider($user))); ?> account.</div>
-                    </div>
-                    <?php else: ?>
-                    <div class="col-md-6">
-                        <label class="form-label form-label-custom">Email *</label>
-                        <input type="email" name="email" class="form-control form-control-custom" required value="<?php echo htmlspecialchars($email); ?>">
                     </div>
                     <?php endif; ?>
                     <div class="col-12">
@@ -312,11 +259,6 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                             <input type="file" name="avatar" id="avatar_input" class="file-upload-input" accept="image/*">
                         </div>
                         <div class="form-text text-secondary small">JPG, PNG, WEBP, or GIF. Max 2MB.</div>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label form-label-custom">Or Photo Link (URL)</label>
-                        <input type="url" name="avatar_url" class="form-control form-control-custom" placeholder="https://example.com/avatar.jpg" value="<?php echo htmlspecialchars($avatar_url_input); ?>">
-                        <div class="form-text text-secondary small">Use a direct image URL (http/https). Leave empty if uploading from your device.</div>
                         <?php if ($avatar != ''): ?>
                         <div class="form-check mt-2">
                             <input class="form-check-input" type="checkbox" name="remove_avatar" value="1" id="remove_avatar">
@@ -386,7 +328,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <button type="submit" class="btn btn-gradient">
                         <i class="fa-solid fa-save"></i> Save Changes
                     </button>
-                    <a href="profile.php" class="btn btn-outline-custom">Cancel</a>
+                    <a href="<?php echo profile_url((int) $_SESSION['user_id']); ?>" class="btn btn-outline-custom">Cancel</a>
                 </div>
             </form>
         </div>
@@ -434,7 +376,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         Enter your password to confirm account closure.
                         <?php endif; ?>
                     </p>
-                    <a href="delete-account.php" class="btn btn-danger danger-zone-btn">
+                    <a href="<?php echo app_url('delete-account.php'); ?>" class="btn btn-danger danger-zone-btn">
                         <i class="fa-solid fa-trash-can"></i> Delete My Account
                     </a>
                 </div>

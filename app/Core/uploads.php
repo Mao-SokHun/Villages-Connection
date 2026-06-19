@@ -12,7 +12,66 @@ function upload_max_avatar_bytes()
 
 function upload_max_video_bytes()
 {
-    return 50 * 1024 * 1024;
+    return 500 * 1024 * 1024;
+}
+
+function upload_max_video_duration_seconds()
+{
+    return 6 * 60;
+}
+
+function upload_ffprobe_path()
+{
+    static $resolved = false;
+    static $path = '';
+
+    if ($resolved) {
+        return $path;
+    }
+    $resolved = true;
+
+    $candidates = array('/usr/bin/ffprobe', '/usr/local/bin/ffprobe');
+    foreach ($candidates as $bin) {
+        if (is_file($bin) && is_executable($bin)) {
+            $path = $bin;
+            return $path;
+        }
+    }
+
+    $which = @shell_exec('command -v ffprobe 2>/dev/null');
+    if (is_string($which) && trim($which) !== '' && is_executable(trim($which))) {
+        $path = trim($which);
+    }
+
+    return $path;
+}
+
+function upload_video_duration_seconds($path)
+{
+    if (!is_file($path) || !is_readable($path)) {
+        return null;
+    }
+
+    $ffprobe = upload_ffprobe_path();
+    if ($ffprobe == '') {
+        return null;
+    }
+
+    $cmd = escapeshellcmd($ffprobe)
+        . ' -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 '
+        . escapeshellarg($path)
+        . ' 2>/dev/null';
+    $output = shell_exec($cmd);
+    if (!is_string($output)) {
+        return null;
+    }
+
+    $duration = (float) trim($output);
+    if ($duration <= 0) {
+        return null;
+    }
+
+    return $duration;
 }
 
 function upload_secure_filename($ext)
@@ -268,6 +327,18 @@ function validate_uploaded_video_file($file, $max_bytes, $label = 'Video')
     if ($mime == '' || !upload_mime_matches_extension($ext, $mime, upload_allowed_video_mimes())) {
         $result['error'] = $label . ' file type is not allowed';
         return $result;
+    }
+
+    if (upload_ffprobe_path() != '') {
+        $duration = upload_video_duration_seconds($file['tmp_name']);
+        if ($duration === null) {
+            $result['error'] = $label . ' could not be read. Use MP4, WEBM, or MOV under 6 minutes.';
+            return $result;
+        }
+        if ($duration > upload_max_video_duration_seconds() + 1) {
+            $result['error'] = $label . ' cannot exceed 6 minutes';
+            return $result;
+        }
     }
 
     $result['ok'] = true;

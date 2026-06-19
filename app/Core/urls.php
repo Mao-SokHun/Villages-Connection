@@ -10,56 +10,6 @@ function pretty_urls_enabled()
     return true;
 }
 
-function public_pretty_route_map()
-{
-    return array(
-        'index.php' => '/',
-        'login.php' => '/login',
-        'register.php' => '/register',
-        'logout.php' => '/logout',
-        'about.php' => '/about',
-        'faq.php' => '/faq',
-        'help-us.php' => '/help-us',
-        'contact.php' => '/contact',
-        'report.php' => '/report',
-        'privacy.php' => '/privacy',
-        'terms.php' => '/terms',
-        'search.php' => '/search',
-        'bookmarks.php' => '/bookmarks',
-        'announcements.php' => '/announcements',
-        'notifications.php' => '/notifications',
-        'profile.php' => '/profile',
-        'edit-profile.php' => '/settings/profile',
-        'delete-account.php' => '/settings/delete-account',
-        'forgot-password.php' => '/forgot-password',
-        'reset-password.php' => '/reset-password',
-        'verify-email.php' => '/verify-email',
-        'resend-verification.php' => '/resend-verification',
-        'support.php' => '/support',
-        'post.php' => '/post',
-    );
-}
-
-function admin_pretty_route_map()
-{
-    return array(
-        'dashboard.php' => '/admin',
-        'posts.php' => '/admin/posts',
-        'categories.php' => '/admin/categories',
-        'comments.php' => '/admin/comments',
-        'users.php' => '/admin/users',
-        'messages.php' => '/admin/messages',
-        'reports.php' => '/admin/reports',
-        'analytics.php' => '/admin/analytics',
-        'settings.php' => '/admin/settings',
-        'announcements.php' => '/admin/announcements',
-        'activity.php' => '/admin/activity',
-        'media.php' => '/admin/media',
-        'my-media.php' => '/admin/my-media',
-        'my-comments.php' => '/admin/my-comments',
-    );
-}
-
 function pretty_route_lookup($script_path)
 {
     $script_path = ltrim(str_replace('\\', '/', $script_path), '/');
@@ -115,6 +65,14 @@ function app_url($path, $base_path = '')
     }
 
     if (pretty_urls_enabled()) {
+        $normalized = ltrim(str_replace('\\', '/', (string) $path), '/');
+        if (preg_match('#^post\.php\?(.*)$#', $normalized, $post_matches)) {
+            parse_str($post_matches[1], $post_params);
+            if (isset($post_params['slug']) && trim((string) $post_params['slug']) !== '') {
+                return post_url(trim((string) $post_params['slug']), $base_path);
+            }
+        }
+
         $pretty = pretty_route_lookup($path);
         if ($pretty !== null) {
             return $pretty;
@@ -144,10 +102,7 @@ function admin_area_url($path)
 function create_post_url($base_path = '')
 {
     if (isLoggedIn()) {
-        if (pretty_urls_enabled()) {
-            return '/admin/posts?action=add';
-        }
-        return $base_path . 'admin/posts.php?action=add';
+        return admin_area_url('posts.php?action=add');
     }
 
     return app_url('register.php', $base_path);
@@ -155,12 +110,16 @@ function create_post_url($base_path = '')
 
 function post_url($slug, $base_path = '')
 {
-    $slug = rawurlencode($slug);
-    if (pretty_urls_enabled()) {
-        return '/post/' . $slug;
+    $slug = trim(rawurldecode((string) $slug));
+    if ($slug === '') {
+        return app_url('index.php', $base_path);
     }
 
-    return $base_path . 'post/' . $slug;
+    if (pretty_urls_enabled()) {
+        return '/post/' . rawurlencode($slug);
+    }
+
+    return app_url('post.php?slug=' . rawurlencode($slug), $base_path);
 }
 
 function profile_url($user_id, $base_path = '')
@@ -218,19 +177,13 @@ function exposed_php_redirect_url()
         return null;
     }
 
-    $skip_prefixes = array('/api/', '/auth/', '/admin/auth');
-    foreach ($skip_prefixes as $prefix) {
+    foreach (route_registry_skip_pretty_prefixes() as $prefix) {
         if (strpos($script, $prefix) === 0) {
             return null;
         }
     }
 
-    $skip_files = array(
-        '/set-language.php',
-        '/sitemap.php',
-        '/404.php',
-    );
-    if (in_array($script, $skip_files, true)) {
+    if (in_array($script, route_registry_skip_pretty_redirect(), true)) {
         return null;
     }
 
@@ -239,6 +192,8 @@ function exposed_php_redirect_url()
         $pretty = pretty_route_lookup($relative);
     } elseif (basename($relative) === 'profile.php' && isset($_GET['id']) && (int) $_GET['id'] > 0) {
         $pretty = profile_url((int) $_GET['id']);
+    } elseif (basename($relative) === 'post.php' && isset($_GET['slug']) && trim((string) $_GET['slug']) !== '') {
+        $pretty = post_url(trim((string) $_GET['slug']));
     } else {
         $pretty = pretty_route_lookup(basename($relative));
     }
@@ -248,7 +203,9 @@ function exposed_php_redirect_url()
     }
 
     $query = '';
-    if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
+    $slug_in_path = (basename($relative) === 'post.php' && isset($_GET['slug']) && trim((string) $_GET['slug']) !== '')
+        || (basename($relative) === 'profile.php' && isset($_GET['id']) && (int) $_GET['id'] > 0);
+    if (!$slug_in_path && isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
         $query = '?' . $_SERVER['QUERY_STRING'];
     }
 

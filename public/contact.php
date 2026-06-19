@@ -2,11 +2,11 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once APP_PATH . '/Core/mail.php';
 
-$page_title = 'Contact Us';
-$page_description = 'Get in touch with the ' . SITE_NAME . ' team for support, feedback, or partnership questions.';
+$page_title = __('page.contact.title');
+$page_description = __('page.contact.meta', array('site' => __('site.name')));
 $page_breadcrumbs = array(
-    array('label' => 'Home', 'url' => 'index.php'),
-    array('label' => 'Contact Us', 'url' => '')
+    array('label' => __('common.home'), 'url' => 'index.php'),
+    array('label' => __('page.contact.title'), 'url' => '')
 );
 
 $name = '';
@@ -44,16 +44,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if ($name == '') {
-        $errors[] = 'Your name is required.';
+        $errors[] = __('validation.name_required');
     }
     if ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'Please enter a valid email address.';
+        $errors[] = __('validation.email_invalid');
     }
     if ($subject == '') {
-        $errors[] = 'Subject is required.';
+        $errors[] = __('validation.subject_required');
     }
     if (strlen($message) < 10) {
-        $errors[] = 'Message must be at least 10 characters.';
+        $errors[] = __('validation.message_min');
     }
 
     if (count($errors) == 0) {
@@ -70,9 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $sent = true;
         $sent_message_id = $message_id;
         if ($contact_user_id > 0) {
-            setFlashMessage('success', 'Your message was sent. Check the notification bell or Support Messages for our reply.');
+            setFlashMessage('success', __('page.contact.sent_logged_in'));
         } else {
-            setFlashMessage('success', 'Your message was sent. Sign in to get replies in your notification bell, or we will email you.');
+            setFlashMessage('success', __('page.contact.sent_guest'));
         }
         $name = '';
         $email = isLoggedIn() ? $_SESSION['user_email'] : '';

@@ -46,7 +46,7 @@ foreach ($migrations as $file) {
         continue;
     }
 
-    $path = __DIR__ . '/' . $file;
+    $path = __DIR__ . '/migrations/' . $file;
     if (!file_exists($path)) {
         echo "MISSING: $file\n";
         continue;

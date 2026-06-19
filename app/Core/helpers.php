@@ -1,5 +1,105 @@
 <?php
 
+function app_cache_dir()
+{
+    if (getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false) {
+        $dir = sys_get_temp_dir() . '/vc_cache';
+    } else {
+        $dir = STORAGE_PATH . '/cache';
+    }
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+    return $dir;
+}
+
+function app_cache_get($key, $ttl_seconds)
+{
+    $path = app_cache_dir() . '/' . preg_replace('/[^a-z0-9_-]/i', '_', $key) . '.json';
+    if (!is_file($path)) {
+        return null;
+    }
+    if ((time() - filemtime($path)) > $ttl_seconds) {
+        return null;
+    }
+    $data = json_decode(file_get_contents($path), true);
+    if (!is_array($data)) {
+        return null;
+    }
+    return $data;
+}
+
+function app_cache_put($key, $data)
+{
+    $path = app_cache_dir() . '/' . preg_replace('/[^a-z0-9_-]/i', '_', $key) . '.json';
+    file_put_contents($path, json_encode($data));
+}
+
+function app_cache_forget($key)
+{
+    $path = app_cache_dir() . '/' . preg_replace('/[^a-z0-9_-]/i', '_', $key) . '.json';
+    if (is_file($path)) {
+        @unlink($path);
+    }
+}
+
+function user_alert_heading($type)
+{
+    if ($type == 'success') {
+        return 'Success';
+    }
+    if ($type == 'danger') {
+        return 'Unable to continue';
+    }
+    if ($type == 'warning') {
+        return 'Please check';
+    }
+    return 'Notice';
+}
+
+function render_user_alerts($messages, $type = 'danger')
+{
+    if (!is_array($messages)) {
+        $messages = array($messages);
+    }
+
+    $items = array();
+    foreach ($messages as $message) {
+        $message = trim((string) $message);
+        if ($message != '') {
+            $items[] = $message;
+        }
+    }
+
+    if (count($items) == 0) {
+        return;
+    }
+
+    if ($type != 'success' && $type != 'danger' && $type != 'warning' && $type != 'info') {
+        $type = 'danger';
+    }
+
+    $icon = function_exists('alert_icon_class') ? alert_icon_class($type) : 'fa-circle-info';
+    $heading = user_alert_heading($type);
+
+    echo '<div class="alert alert-' . htmlspecialchars($type) . ' user-alert" role="alert">';
+    echo '<span class="alert-icon" aria-hidden="true"><i class="fa-solid ' . htmlspecialchars($icon) . '"></i></span>';
+    echo '<div class="alert-body">';
+    echo '<div class="user-alert-title">' . htmlspecialchars($heading) . '</div>';
+
+    if (count($items) == 1) {
+        echo '<p class="user-alert-text">' . htmlspecialchars($items[0]) . '</p>';
+    } else {
+        echo '<ul class="user-alert-list">';
+        foreach ($items as $item) {
+            echo '<li>' . htmlspecialchars($item) . '</li>';
+        }
+        echo '</ul>';
+    }
+
+    echo '</div></div>';
+}
+
 function is_remote_media_url($value)
 {
     if ($value == '' || $value == null) {
@@ -64,6 +164,107 @@ function public_asset_url($path)
     }
 
     return '/' . ltrim($path, '/');
+}
+
+function site_logo_url()
+{
+    return public_asset_url('icons/logo.png');
+}
+
+function site_logo_light_url()
+{
+    return public_asset_url('icons/logo-light.png');
+}
+
+function site_logo_full_url()
+{
+    return public_asset_url('icons/logo-full.png');
+}
+
+function site_logo_alt()
+{
+    return SITE_NAME . ' — ' . SITE_TAGLINE;
+}
+
+function render_code_logo($variant = 'nav', $extra_class = '')
+{
+    $allowed = array('nav', 'footer', 'auth');
+    if (!in_array($variant, $allowed, true)) {
+        $variant = 'nav';
+    }
+
+    $classes = 'brand-mark brand-mark--' . $variant;
+    if ($extra_class != '') {
+        $classes = $classes . ' ' . trim($extra_class);
+    }
+
+    $label = htmlspecialchars(site_logo_alt(), ENT_QUOTES, 'UTF-8');
+    $cx = 178;
+    $cy = 38;
+    $outer_points = array();
+    $inner_points = array();
+
+    for ($i = 0; $i < 8; $i++) {
+        $angle = deg2rad(-90 + ($i * 45));
+        $outer_points[] = array(
+            round($cx + (30 * cos($angle)), 1),
+            round($cy + (30 * sin($angle)), 1),
+        );
+    }
+
+    for ($i = 0; $i < 6; $i++) {
+        $angle = deg2rad(-90 + ($i * 60));
+        $inner_points[] = array(
+            round($cx + (16 * cos($angle)), 1),
+            round($cy + (16 * sin($angle)), 1),
+        );
+    }
+
+    $html = '<span class="' . htmlspecialchars($classes, ENT_QUOTES, 'UTF-8') . '" role="img" aria-label="' . $label . '">';
+    $html .= '<svg class="brand-mark-svg vc-logo" viewBox="0 0 300 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">';
+
+    $html .= '<g class="vc-logo-network" aria-hidden="true">';
+    $html .= '<circle class="vc-logo-ring" cx="' . $cx . '" cy="' . $cy . '" r="32"></circle>';
+    $html .= '<circle class="vc-logo-ring vc-logo-ring--inner" cx="' . $cx . '" cy="' . $cy . '" r="20"></circle>';
+
+    foreach ($outer_points as $point) {
+        $html .= '<line class="vc-logo-link" x1="' . $cx . '" y1="' . $cy . '" x2="' . $point[0] . '" y2="' . $point[1] . '"></line>';
+    }
+
+    for ($i = 0; $i < 8; $i++) {
+        $next = ($i + 1) % 8;
+        $html .= '<line class="vc-logo-link vc-logo-link--outer" x1="' . $outer_points[$i][0] . '" y1="' . $outer_points[$i][1] . '" x2="' . $outer_points[$next][0] . '" y2="' . $outer_points[$next][1] . '"></line>';
+    }
+
+    foreach ($inner_points as $point) {
+        $html .= '<line class="vc-logo-link vc-logo-link--inner" x1="' . $cx . '" y1="' . $cy . '" x2="' . $point[0] . '" y2="' . $point[1] . '"></line>';
+    }
+
+    for ($i = 0; $i < 6; $i++) {
+        $next = ($i + 1) % 6;
+        $html .= '<line class="vc-logo-link vc-logo-link--inner" x1="' . $inner_points[$i][0] . '" y1="' . $inner_points[$i][1] . '" x2="' . $inner_points[$next][0] . '" y2="' . $inner_points[$next][1] . '"></line>';
+    }
+
+    foreach ($inner_points as $point) {
+        $html .= '<circle class="vc-logo-node vc-logo-node--mini" cx="' . $point[0] . '" cy="' . $point[1] . '" r="2.4"></circle>';
+    }
+
+    foreach ($outer_points as $point) {
+        $html .= '<circle class="vc-logo-node vc-logo-node--outer" cx="' . $point[0] . '" cy="' . $point[1] . '" r="4.2"></circle>';
+    }
+
+    $html .= '<circle class="vc-logo-node vc-logo-node--core" cx="' . $cx . '" cy="' . $cy . '" r="7.5"></circle>';
+    $html .= '</g>';
+
+    $html .= '<text class="vc-logo-text" fill="currentColor" x="6" y="54">villages</text>';
+
+    if ($variant !== 'nav') {
+        $html .= '<text class="vc-logo-tagline" fill="currentColor" x="292" y="66" text-anchor="end">connection</text>';
+    }
+
+    $html .= '</svg></span>';
+
+    return $html;
 }
 
 function resolve_media_src($file, $subdir = '')
@@ -553,9 +754,14 @@ function user_avatar_exists($avatar)
     return false;
 }
 
+function normalize_email($email)
+{
+    return strtolower(trim((string) $email));
+}
+
 function gravatar_url($email, $size)
 {
-    $email = strtolower(trim($email));
+    $email = normalize_email($email);
     if ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return '';
     }
@@ -766,16 +972,29 @@ function nav_category_list($pdo)
         return $cache;
     }
 
-    $rows = $pdo->query('SELECT name, slug, icon FROM categories ORDER BY name ASC')->fetchAll();
+    $file_cached = app_cache_get('nav_categories', 300);
+    if (is_array($file_cached) && isset($file_cached['rows']) && is_array($file_cached['rows'])) {
+        $cache = $file_cached['rows'];
+        $cached_at = time();
+        return $cache;
+    }
+
+    try {
+        $rows = $pdo->query('SELECT name, slug, icon FROM categories ORDER BY name ASC')->fetchAll();
+    } catch (Exception $e) {
+        // During first boot/migration race, categories table may not exist yet.
+        $rows = array();
+    }
     $cache = $rows;
     $cached_at = time();
+    app_cache_put('nav_categories', array('rows' => $rows));
 
     return $rows;
 }
 
 function clear_nav_category_cache()
 {
-    // Kept for admin category updates; request cache resets each HTTP request.
+    app_cache_forget('nav_categories');
 }
 
 function site_contact_email()
@@ -890,9 +1109,81 @@ function refresh_user_session($pdo, $user_id)
     return true;
 }
 
+function archive_expired_posts($pdo)
+{
+    static $ran = false;
+    if ($ran) {
+        return;
+    }
+    $ran = true;
+
+    if (app_cache_get('archive_expired_posts', 300) !== null) {
+        return;
+    }
+
+    try {
+        $sql = "UPDATE posts
+                SET status = 'Archived', updated_at = CURRENT_TIMESTAMP
+                WHERE status = 'Published'
+                  AND archive_on_expiry = TRUE
+                  AND expires_at IS NOT NULL
+                  AND expires_at <= CURRENT_TIMESTAMP";
+        $pdo->exec($sql);
+        app_cache_put('archive_expired_posts', array('ran' => time()));
+    } catch (Exception $e) {
+        // Table/column may not exist before migration.
+    }
+}
+
+function user_reputation_summary($pdo, $user_id)
+{
+    $user_id = (int) $user_id;
+    if ($user_id <= 0) {
+        return array('points' => 0, 'badge' => 'Newcomer', 'trust_rank' => 'Bronze');
+    }
+    $sql = "SELECT
+                COUNT(*) AS post_count,
+                COALESCE(SUM(likes), 0) AS total_likes,
+                COALESCE(SUM(views), 0) AS total_views
+            FROM posts
+            WHERE user_id = :uid
+              AND status = 'Published'
+              AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array('uid' => $user_id));
+    $row = $stmt->fetch();
+    $posts = $row ? (int) $row['post_count'] : 0;
+    $likes = $row ? (int) $row['total_likes'] : 0;
+    $views = $row ? (int) $row['total_views'] : 0;
+    $followers = follower_count($pdo, $user_id);
+
+    $points = ($posts * 12) + ($likes * 3) + (int) floor($views / 25) + ($followers * 4);
+    $badge = 'Newcomer';
+    $trust_rank = 'Bronze';
+    if ($points >= 1200) {
+        $badge = 'Village Champion';
+        $trust_rank = 'Platinum';
+    } elseif ($points >= 700) {
+        $badge = 'Trusted Voice';
+        $trust_rank = 'Gold';
+    } elseif ($points >= 300) {
+        $badge = 'Helpful Contributor';
+        $trust_rank = 'Silver';
+    }
+
+    return array(
+        'points' => $points,
+        'badge' => $badge,
+        'trust_rank' => $trust_rank
+    );
+}
+
 function user_post_count($pdo, $user_id)
 {
-    $sql = "SELECT COUNT(*) FROM posts WHERE user_id = :uid AND status = 'Published'";
+    $sql = "SELECT COUNT(*) FROM posts
+            WHERE user_id = :uid
+              AND status = 'Published'
+              AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array('uid' => $user_id));
     return (int) $stmt->fetchColumn();
@@ -1324,12 +1615,29 @@ function record_post_view($pdo, $post_id)
     if (!isset($_SESSION['viewed_posts'])) {
         $_SESSION['viewed_posts'] = array();
     }
+
+    $now = time();
     $key = 'post_' . (int) $post_id;
+
+    foreach ($_SESSION['viewed_posts'] as $view_key => $viewed_at) {
+        if ($now - (int) $viewed_at > 86400) {
+            unset($_SESSION['viewed_posts'][$view_key]);
+        }
+    }
+
     if (isset($_SESSION['viewed_posts'][$key])) {
         return false;
     }
-    $_SESSION['viewed_posts'][$key] = time();
-    $pdo->prepare('UPDATE posts SET views = views + 1 WHERE id = :id')->execute(array('id' => (int) $post_id));
+
+    $stmt = $pdo->prepare('UPDATE posts SET views = COALESCE(views, 0) + 1 WHERE id = :id');
+    $stmt->execute(array('id' => (int) $post_id));
+    if ((int) $stmt->rowCount() < 1) {
+        return false;
+    }
+
+    $_SESSION['viewed_posts'][$key] = $now;
+    app_cache_forget('home_feed_meta');
+
     return true;
 }
 

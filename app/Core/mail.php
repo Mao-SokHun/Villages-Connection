@@ -229,6 +229,30 @@ function mail_layout_wrap($title, $inner_html, $preheader = '')
     $tagline = htmlspecialchars(SITE_TAGLINE);
     $year = date('Y');
     $preheader_text = htmlspecialchars($preheader);
+    $logo_src = '';
+    $logo_file = ROOT_PATH . '/public/icons/logo-light.png';
+    if (is_file($logo_file)) {
+        $logo_bytes = @file_get_contents($logo_file);
+        if ($logo_bytes !== false && $logo_bytes !== '') {
+            // Embed image directly so email clients do not need localhost/public URL access.
+            $logo_src = 'data:image/png;base64,' . base64_encode($logo_bytes);
+        }
+    }
+    if ($logo_src == '') {
+        $asset_path = public_asset_url('icons/logo-light.png');
+        if (is_remote_media_url($asset_path)) {
+            $logo_src = $asset_path;
+        } else {
+            $base_url = '';
+            if (defined('APP_URL') && APP_URL != '') {
+                $base_url = rtrim(APP_URL, '/');
+            } else {
+                $base_url = rtrim(site_base_url(), '/');
+            }
+            $logo_src = $base_url . $asset_path;
+        }
+    }
+    $logo_url = htmlspecialchars($logo_src);
 
     $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">';
     $html .= '<title>' . htmlspecialchars($title) . '</title></head>';
@@ -241,6 +265,7 @@ function mail_layout_wrap($title, $inner_html, $preheader = '')
     $html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 12px 30px rgba(15,23,42,0.08);">';
     $html .= '<tr><td style="padding:28px 32px 22px;background:linear-gradient(135deg,#6366f1 0%,#0ea5e9 52%,#14b8a6 100%);color:#ffffff;text-align:center;">';
     $html .= '<div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.92;margin-bottom:8px;">Security</div>';
+    $html .= '<div style="margin:0 0 10px;"><img src="' . $logo_url . '" alt="' . $site . ' logo" width="180" style="display:block;margin:0 auto;max-width:180px;width:100%;height:auto;border:0;outline:none;text-decoration:none;"></div>';
     $html .= '<div style="font-size:28px;font-weight:700;line-height:1.2;">' . $site . '</div>';
     $html .= '<div style="font-size:14px;opacity:0.92;margin-top:6px;">' . $tagline . '</div>';
     $html .= '</td></tr>';
@@ -392,10 +417,30 @@ function send_welcome_email($to, $name)
         'site_name' => SITE_NAME,
     ));
 
-    $body = '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a;">';
-    $body = $body . '<h2 style="color:#4f46e5;">' . htmlspecialchars($template['subject']) . '</h2>';
-    $body = $body . '<p>' . nl2br(htmlspecialchars($template['body'])) . '</p>';
-    $body = $body . '<p style="color:#64748b;font-size:13px;">' . htmlspecialchars(SITE_NAME) . '</p></div>';
+    $safe_name = htmlspecialchars($name);
+    $feed_url = site_base_url() . '/index.php';
+    $create_url = site_base_url() . '/admin/posts.php?action=add';
+
+    $inner = '';
+    $inner .= '<h1 style="margin:0 0 10px;font-size:24px;line-height:1.3;color:#0f172a;">Welcome to ' . htmlspecialchars(SITE_NAME) . '!</h1>';
+    $inner .= '<p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#475569;">Hello ' . $safe_name . ', your account is ready. Start sharing community updates and connect with members today.</p>';
+    $inner .= mail_button('Explore Feed', $feed_url);
+    $inner .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">';
+    $inner .= '<tr><td style="padding:14px 16px;font-size:14px;line-height:1.65;color:#334155;">';
+    $inner .= '<strong style="color:#0f172a;">Quick start:</strong>';
+    $inner .= '<ul style="margin:10px 0 0 18px;padding:0;color:#475569;">';
+    $inner .= '<li style="margin:0 0 6px;">Complete your profile and avatar</li>';
+    $inner .= '<li style="margin:0 0 6px;">Create your first post with photo or video</li>';
+    $inner .= '<li style="margin:0;">Follow members and engage with likes/comments</li>';
+    $inner .= '</ul>';
+    $inner .= '</td></tr></table>';
+    $inner .= '<p style="margin:0;font-size:13px;line-height:1.7;color:#64748b;">Want to publish immediately? <a href="' . htmlspecialchars($create_url) . '" style="color:#4f46e5;text-decoration:none;font-weight:600;">Create a post now</a>.</p>';
+
+    $body = mail_layout_wrap(
+        $template['subject'],
+        $inner,
+        'Welcome to ' . SITE_NAME . '. Your account is ready.'
+    );
 
     return send_email($to, $template['subject'], $body);
 }

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "composer install --no-dev --optimize-autoloader",
+  "functions": {
+    "api/index.php": {
+      "runtime": "vercel-php@0.7.4",
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    { "src": "/css/(.*)", "dest": "/public/css/$1" },
+    { "src": "/js/(.*)", "dest": "/public/js/$1" },
+    { "src": "/icons/(.*)", "dest": "/public/icons/$1" },
+    { "src": "/uploads/(.*)", "dest": "/public/uploads/$1" },
+    { "src": "/sw.js", "dest": "/public/sw.js" },
+    { "src": "/manifest.webmanifest", "dest": "/public/manifest.webmanifest" },
+    { "src": "/robots.txt", "dest": "/public/robots.txt" },
+    { "src": "/413.html", "dest": "/public/413.html" },
+    { "src": "/(.*)", "dest": "/api/index.php" }
+  ]
+}

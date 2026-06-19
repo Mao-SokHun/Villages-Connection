@@ -2,11 +2,11 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once APP_PATH . '/Core/mail.php';
 
-$page_title = 'Report Content';
-$page_description = 'Report inappropriate, spam, or harmful content on ' . SITE_NAME . '.';
+$page_title = __('page.report.title');
+$page_description = __('page.report.meta', array('site' => __('site.name')));
 $page_breadcrumbs = array(
-    array('label' => 'Home', 'url' => 'index.php'),
-    array('label' => 'Report Content', 'url' => '')
+    array('label' => __('common.home'), 'url' => 'index.php'),
+    array('label' => __('page.report.title'), 'url' => '')
 );
 
 $name = '';
@@ -27,11 +27,11 @@ if (isset($_GET['url'])) {
 }
 
 $reason_options = array(
-    'Spam or misleading content',
-    'Harassment or hate speech',
-    'Inappropriate photos or videos',
-    'Copyright or ownership issue',
-    'Other'
+    'spam' => __('page.report.reason_spam'),
+    'harassment' => __('page.report.reason_harassment'),
+    'inappropriate' => __('page.report.reason_inappropriate'),
+    'copyright' => __('page.report.reason_copyright'),
+    'other' => __('page.report.reason_other'),
 );
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -59,16 +59,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if ($name == '') {
-        $errors[] = 'Your name is required.';
+        $errors[] = __('validation.name_required');
     }
     if ($email == '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'Please enter a valid email address.';
+        $errors[] = __('validation.email_invalid');
     }
-    if ($reason == '' || !in_array($reason, $reason_options)) {
-        $errors[] = 'Please select a valid reason.';
+    if ($reason == '' || !isset($reason_options[$reason])) {
+        $errors[] = __('validation.reason_required');
     }
     if (strlen($details) < 10) {
-        $errors[] = 'Please describe the issue in at least 10 characters.';
+        $errors[] = __('validation.details_min');
     }
 
     if (count($errors) == 0) {
@@ -77,10 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $report_user_id = (int) $_SESSION['user_id'];
         }
 
-        save_content_report($pdo, $name, $email, $reason, $post_url, $details, $report_user_id);
-        send_report_email($name, $email, $reason, $post_url, $details);
+        $reason_label = $reason_options[$reason];
+        save_content_report($pdo, $name, $email, $reason_label, $post_url, $details, $report_user_id);
+        send_report_email($name, $email, $reason_label, $post_url, $details);
         $sent = true;
-        setFlashMessage('success', 'Your report was submitted. Admins will review it soon.');
+        setFlashMessage('success', __('page.report.sent_flash'));
         $reason = '';
         $post_url = '';
         $details = '';

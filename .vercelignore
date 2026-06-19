@@ -1,0 +1,16 @@
+.env
+.env.*
+.git
+.github
+docker
+docs
+tests
+.phpunit.cache
+storage/backups
+storage/cache
+scripts
+*.md
+!README.md
+composer.phar
+composer-setup.php
+agent-transcripts

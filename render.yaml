@@ -1,0 +1,97 @@
+# Render Blueprint — Villages Connection
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Option A (recommended if you already use Supabase): deploy web service only.
+#   - Comment out the `databases` block below.
+#   - Set DB_* env vars in the Render dashboard (Supabase pooler URL).
+#
+# Option B: use Render PostgreSQL — uncomment `databases` and wire DATABASE_URL.
+
+services:
+  - type: web
+    name: villages-connection
+    runtime: docker
+    dockerfilePath: ./Dockerfile.prod
+    plan: free
+    region: singapore
+    healthCheckPath: /
+    envVars:
+      - key: APP_NAME
+        value: Village Connect
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_TIMEZONE
+        value: Asia/Phnom_Penh
+      - key: APP_URL
+        sync: false
+      - key: TRUST_PROXY
+        value: true
+      - key: PRETTY_URLS
+        value: true
+      - key: RATE_LIMIT_DRIVER
+        value: database
+      # --- Supabase (set in dashboard) ---
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      # --- Mail ---
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        sync: false
+      - key: MAIL_ENCRYPTION
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: Village Connect
+      - key: SITE_CONTACT_EMAIL
+        sync: false
+      # --- OAuth (optional) ---
+      - key: OAUTH_BASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: FACEBOOK_APP_ID
+        sync: false
+      - key: FACEBOOK_APP_SECRET
+        sync: false
+      # --- Cloudinary (recommended for media) ---
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: village-connect
+    disk:
+      name: vc-uploads
+      mountPath: /var/www/html/public/uploads
+      sizeGB: 1
+
+# Uncomment for Render-hosted Postgres instead of Supabase:
+# databases:
+#   - name: villages-connection-db
+#     plan: free
+#     databaseName: project_cms
+#     user: villages_connection

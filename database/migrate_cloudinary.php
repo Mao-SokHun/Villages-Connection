@@ -1,20 +1,4 @@
-<?php
+﻿<?php
 
-if (!isset($pdo)) {
-    require_once __DIR__ . '/../config/config.php';
-    require_once __DIR__ . '/../config/database.php';
-}
-
-echo "=== Cloudinary column migration ===\n\n";
-
-$queries = array(
-    'ALTER TABLE posts ALTER COLUMN image_url TYPE VARCHAR(500)',
-    'ALTER TABLE posts ALTER COLUMN video_url TYPE VARCHAR(500)',
-);
-
-foreach ($queries as $sql) {
-    $pdo->exec($sql);
-    echo "OK: $sql\n";
-}
-
-echo "\nCloudinary migration complete.\n";
+/** Backward-compatible entry — logic lives in database/migrations/migrate_cloudinary.php. Do not edit business logic here. */
+require_once __DIR__ . '/migrations/migrate_cloudinary.php';

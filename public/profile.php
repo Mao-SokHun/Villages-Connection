@@ -15,15 +15,14 @@ if ($profile_id > 0) {
     $user = get_user_by_id($pdo, $profile_id);
     $is_own_profile = true;
 } else {
-    setFlashMessage('warning', 'Please login to view your profile.');
-    header('Location: ' . app_url('login.php'));
-    exit;
+    setFlashMessage('warning', __('profile.login_required'));
+    redirect_to('login.php');
 }
 
 if (!$user || !user_is_publicly_visible($user)) {
-    $page_title = 'Profile Not Found';
+    $page_title = __('profile.not_found_title');
     require_once ROOT_PATH . '/app/Views/layouts/header.php';
-    echo '<div class="empty-state glass-panel my-5"><i class="fa-solid fa-user-slash"></i><h3>Profile not found</h3><p>This user account does not exist.</p><a href="index.php" class="btn btn-gradient mt-3">Go Home</a></div>';
+    echo '<div class="empty-state glass-panel my-5"><i class="fa-solid fa-user-slash"></i><h3>' . htmlspecialchars(__('profile.not_found')) . '</h3><p>' . htmlspecialchars(__('profile.not_found_desc')) . '</p><a href="' . htmlspecialchars(app_url('index.php')) . '" class="btn btn-gradient mt-3">' . htmlspecialchars(__('profile.go_home')) . '</a></div>';
     require_once ROOT_PATH . '/app/Views/layouts/footer.php';
     exit;
 }
@@ -41,7 +40,7 @@ if ($is_own_profile && is_oauth_user($user)) {
     refresh_user_session($pdo, (int) $user['id']);
 }
 
-$page_title = $user['name'] . ' — Profile';
+$page_title = $user['name'] . ' — ' . __('profile.title_suffix');
 $post_count = user_post_count($pdo, $user['id']);
 
 $bio = '';
@@ -129,9 +128,9 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <?php echo render_user_avatar($user['name'], $avatar, 'user-avatar-xl', user_public_email($user)); ?>
                     </div>
                     <?php if ($user['role'] == 'admin'): ?>
-                    <span class="dropdown-user-badge admin profile-role-badge">Admin</span>
+                    <span class="dropdown-user-badge admin profile-role-badge"><?php echo __('common.admin'); ?></span>
                     <?php elseif ($user['role'] == 'author'): ?>
-                    <span class="dropdown-user-badge author profile-role-badge">Author</span>
+                    <span class="dropdown-user-badge author profile-role-badge"><?php echo __('common.author'); ?></span>
                     <?php endif; ?>
                 </div>
 
@@ -155,7 +154,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                                 <?php echo htmlspecialchars($profile_subtitle); ?>
                             </p>
                             <?php elseif (!$is_own_profile): ?>
-                            <p class="profile-email"><i class="fa-regular fa-calendar"></i> Member since <?php echo format_date($user['created_at']); ?></p>
+                            <p class="profile-email"><i class="fa-regular fa-calendar"></i> <?php echo __('profile.member_since', array('date' => format_date($user['created_at']))); ?></p>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -163,40 +162,40 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <div class="profile-stats">
                         <div class="profile-stat">
                             <span class="profile-stat-value"><?php echo $post_count; ?></span>
-                            <span class="profile-stat-label">Published</span>
+                            <span class="profile-stat-label"><?php echo __('profile.published'); ?></span>
                         </div>
                         <div class="profile-stat">
                             <span class="profile-stat-value"><?php echo number_format($total_views); ?></span>
-                            <span class="profile-stat-label">Views</span>
+                            <span class="profile-stat-label"><?php echo __('profile.views'); ?></span>
                         </div>
                         <div class="profile-stat">
                             <span class="profile-stat-value"><?php echo number_format($total_likes); ?></span>
-                            <span class="profile-stat-label">Likes</span>
+                            <span class="profile-stat-label"><?php echo __('profile.likes'); ?></span>
                         </div>
                         <div class="profile-stat">
                             <span class="profile-stat-value profile-stat-date"><?php echo format_date($user['created_at']); ?></span>
-                            <span class="profile-stat-label">Joined</span>
+                            <span class="profile-stat-label"><?php echo __('profile.joined'); ?></span>
                         </div>
                         <div class="profile-stat">
                             <span class="profile-stat-value"><?php echo $profile_followers; ?></span>
-                            <span class="profile-stat-label">Followers</span>
+                            <span class="profile-stat-label"><?php echo __('profile.followers'); ?></span>
                         </div>
                         <div class="profile-stat">
                             <span class="profile-stat-value"><?php echo $profile_following; ?></span>
-                            <span class="profile-stat-label">Following</span>
+                            <span class="profile-stat-label"><?php echo __('profile.following'); ?></span>
                         </div>
                     </div>
 
                     <div class="profile-about">
-                        <h6 class="profile-about-title">About</h6>
+                        <h6 class="profile-about-title"><?php echo __('profile.about'); ?></h6>
                         <?php if ($bio != ''): ?>
                         <p class="profile-bio"><?php echo nl2br(htmlspecialchars($bio)); ?></p>
                         <?php else: ?>
                         <p class="profile-bio profile-bio-empty">
                             <?php if ($is_own_profile): ?>
-                            Add a short bio so readers know who you are.
+                            <?php echo __('profile.bio_empty_own'); ?>
                             <?php else: ?>
-                            This member has not added a bio yet.
+                            <?php echo __('profile.bio_empty'); ?>
                             <?php endif; ?>
                         </p>
                         <?php endif; ?>
@@ -209,7 +208,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <?php endif; ?>
                         <?php if ($website != ''): ?>
                         <a href="<?php echo htmlspecialchars($website); ?>" target="_blank" rel="noopener" class="profile-chip profile-chip-link">
-                            <i class="fa-solid fa-link"></i> Website
+                            <i class="fa-solid fa-link"></i> <?php echo __('common.website'); ?>
                         </a>
                         <?php endif; ?>
                     </div>
@@ -217,11 +216,11 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
 
                     <?php if ($is_own_profile): ?>
                     <div class="profile-actions">
-                        <a href="<?php echo app_url('edit-profile.php'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen"></i> Edit Profile</a>
-                        <a href="<?php echo admin_area_url('dashboard.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-gauge"></i> Dashboard</a>
-                        <a href="<?php echo admin_area_url('posts.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-square-pen"></i> My Posts</a>
+                        <a href="<?php echo app_url('edit-profile.php'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen"></i> <?php echo __('profile.edit_profile'); ?></a>
+                        <a href="admin/dashboard.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+                        <a href="admin/posts.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-square-pen"></i> My Posts</a>
                         <?php if ($own_drafts > 0): ?>
-                        <a href="<?php echo admin_area_url('posts.php?status=Draft'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-file-lines"></i> My Drafts (<?php echo $own_drafts; ?>)</a>
+                        <a href="<?php echo admin_area_url('posts.php?status=Draft'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-file-lines"></i> <?php echo __('profile.my_drafts'); ?> (<?php echo $own_drafts; ?>)</a>
                         <?php endif; ?>
                     </div>
                     <?php else: ?>
@@ -233,12 +232,12 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                             data-user-id="<?php echo (int) $user['id']; ?>"
                             data-following="<?php echo $is_following_profile ? '1' : '0'; ?>">
                             <i class="fa-solid <?php echo $is_following_profile ? 'fa-user-minus' : 'fa-user-plus'; ?>"></i>
-                            <?php echo $is_following_profile ? 'Unfollow' : 'Follow'; ?>
+                            <?php echo $is_following_profile ? __('profile.unfollow') : __('profile.follow'); ?>
                         </button>
                         <?php else: ?>
-                        <a href="<?php echo app_url('login.php'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-user-plus"></i> Follow</a>
+                        <a href="<?php echo app_url('login.php'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-user-plus"></i> <?php echo __('profile.follow'); ?></a>
                         <?php endif; ?>
-                        <a href="<?php echo app_url('index.php?author=' . (int) $user['id']); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-images"></i> View Posts</a>
+                        <a href="<?php echo app_url('index.php?author=' . (int) $user['id']); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-images"></i> <?php echo __('profile.view_posts'); ?></a>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -248,18 +247,18 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
         <div class="profile-posts-section glass-panel reveal">
             <div class="profile-section-head">
                 <div>
-                    <h3 class="text-white mb-1"><i class="fa-solid fa-images text-warning me-2"></i>Published Posts</h3>
-                    <p class="text-secondary small mb-0"><?php echo $post_count; ?> post<?php if ($post_count != 1) echo 's'; ?> on <?php echo SITE_NAME; ?></p>
+                    <h3 class="text-white mb-1"><i class="fa-solid fa-images text-warning me-2"></i><?php echo __('profile.published_posts'); ?></h3>
+                    <p class="text-secondary small mb-0"><?php echo __('bookmarks.count', array('count' => $post_count)); ?> · <?php echo __('site.name'); ?></p>
                 </div>
                 <?php if ($is_own_profile): ?>
-                <a href="<?php echo admin_area_url('posts.php?action=add'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-plus"></i> New Post</a>
+                <a href="<?php echo create_post_url($base_path); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-plus"></i> <?php echo __('profile.new_post'); ?></a>
                 <?php endif; ?>
             </div>
 
             <?php if (count($author_posts) == 0): ?>
             <div class="profile-empty-box">
                 <div class="profile-empty-icon"><i class="fa-solid fa-file-circle-plus"></i></div>
-                <h4 class="text-white mb-2">No published posts yet</h4>
+                <h4 class="text-white mb-2"><?php echo __('profile.no_posts'); ?></h4>
                 <p class="text-secondary mb-3">
                     <?php if ($is_own_profile): ?>
                     Share your first post with photos, videos, and a caption.
@@ -268,7 +267,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <?php endif; ?>
                 </p>
                 <?php if ($is_own_profile): ?>
-                <a href="<?php echo admin_area_url('posts.php?action=add'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen-nib"></i> Create Post</a>
+                <a href="<?php echo create_post_url($base_path); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen-nib"></i> <?php echo __('profile.create_post'); ?></a>
                 <?php endif; ?>
             </div>
             <?php else: ?>
@@ -283,7 +282,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                 <?php endforeach; ?>
             </div>
             <?php if ($posts_total_pages > 1): ?>
-            <nav class="profile-pagination mt-4" aria-label="Profile posts pages">
+            <nav class="profile-pagination mt-4" aria-label="<?php echo htmlspecialchars(__('profile.pagination')); ?>">
                 <ul class="pagination pagination-sm justify-content-center mb-0">
                     <?php if ($posts_page > 1): ?>
                     <li class="page-item"><a class="page-link" href="<?php echo $profile_page_base . ($posts_page - 1); ?>">Previous</a></li>

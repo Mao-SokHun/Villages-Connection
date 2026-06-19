@@ -1,90 +1,40 @@
 <div class="row justify-content-center">
     <div class="col-lg-9">
         <div class="glass-panel p-4 p-md-5 reveal mb-4">
-            <span class="hero-badge mb-3"><i class="fa-solid fa-circle-question me-2"></i>Support</span>
-            <h1 class="text-white mb-3">Frequently Asked Questions</h1>
-            <p class="text-secondary">Quick answers about posting, accounts, and using <?php echo SITE_NAME; ?>.</p>
+            <span class="hero-badge mb-3"><i class="fa-solid fa-circle-question me-2"></i><?php echo __('page.faq.badge'); ?></span>
+            <h1 class="text-white mb-3"><?php echo __('page.faq.title'); ?></h1>
+            <p class="text-secondary"><?php echo __('page.faq.intro', array('site' => __('site.name'))); ?></p>
         </div>
 
         <div class="faq-list reveal">
+            <?php
+            $faq_items = array(
+                array('id' => 'faq1', 'q' => 'page.faq.q1', 'a' => 'page.faq.a1', 'open' => true),
+                array('id' => 'faq2', 'q' => 'page.faq.q2', 'a' => 'page.faq.a2'),
+                array('id' => 'faq3', 'q' => 'page.faq.q3', 'a' => 'page.faq.a3'),
+                array('id' => 'faq4', 'q' => 'page.faq.q4', 'a' => 'page.faq.a4'),
+                array('id' => 'faq5', 'q' => 'page.faq.q5', 'a' => 'page.faq.a5'),
+                array('id' => 'faq6', 'q' => 'page.faq.q6', 'a' => 'page.faq.a6'),
+            );
+            foreach ($faq_items as $item):
+            ?>
             <div class="faq-item glass-panel">
-                <button class="faq-question" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="true">
-                    <span>How do I create a post?</span>
+                <button class="faq-question" type="button" data-bs-toggle="collapse" data-bs-target="#<?php echo $item['id']; ?>"<?php if (!empty($item['open'])) echo ' aria-expanded="true"'; ?>>
+                    <span><?php echo __($item['q']); ?></span>
                     <i class="fa-solid fa-chevron-down"></i>
                 </button>
-                <div class="collapse show" id="faq1">
-                    <div class="faq-answer text-secondary">
-                        Register for a free account, sign in, then open <strong>My Posts</strong> and click <strong>New Post</strong>. Add a title, caption, photos or video, pick a category, and publish when ready.
-                    </div>
+                <div class="collapse<?php if (!empty($item['open'])) echo ' show'; ?>" id="<?php echo $item['id']; ?>">
+                    <div class="faq-answer text-secondary"><?php echo __($item['a']); ?></div>
                 </div>
             </div>
-
-            <div class="faq-item glass-panel">
-                <button class="faq-question" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
-                    <span>Can I upload photos and videos?</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </button>
-                <div class="collapse" id="faq2">
-                    <div class="faq-answer text-secondary">
-                        Yes. You can upload an image, upload an MP4 video file, or paste a YouTube link. Posts work like social media — share what is happening in your community with visuals.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item glass-panel">
-                <button class="faq-question" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
-                    <span>How do likes and views work?</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </button>
-                <div class="collapse" id="faq3">
-                    <div class="faq-answer text-secondary">
-                        Views increase when someone opens your published post. Likes can be added once per visitor on each post. You can track totals from your dashboard and profile.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item glass-panel">
-                <button class="faq-question" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
-                    <span>Can I create my own category?</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </button>
-                <div class="collapse" id="faq4">
-                    <div class="faq-answer text-secondary">
-                        Yes. When creating a post, switch to <strong>Create New Category</strong>, enter a name, icon, and short description. New categories are shared with all members. Admins can edit or remove them.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item glass-panel">
-                <button class="faq-question" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
-                    <span>How do I reset my password?</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </button>
-                <div class="collapse" id="faq5">
-                    <div class="faq-answer text-secondary">
-                        On the sign-in page, click <strong>Forgot Password</strong>, enter your email, and use the 6-digit OTP code sent to your inbox. Then set a new password on the reset page.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item glass-panel">
-                <button class="faq-question" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
-                    <span>How do I delete my account?</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </button>
-                <div class="collapse" id="faq6">
-                    <div class="faq-answer text-secondary">
-                        Go to <strong>Edit Profile</strong>, open the danger zone section, and follow the delete account steps. Your posts may stay on the site, but your personal account data will be removed.
-                    </div>
-                </div>
-            </div>
+            <?php endforeach; ?>
         </div>
 
         <div class="glass-panel p-4 mt-4 reveal text-center">
-            <p class="text-secondary mb-3">Still need help? Email <a href="mailto:<?php echo htmlspecialchars(site_contact_email()); ?>" class="footer-link"><?php echo htmlspecialchars(site_contact_email()); ?></a>, use the contact form, or report content that breaks community rules.</p>
-            <a href="contact.php" class="btn btn-gradient btn-sm me-2"><i class="fa-solid fa-envelope"></i> Contact Us</a>
-            <a href="help-us.php" class="btn btn-outline-custom btn-sm me-2"><i class="fa-solid fa-hand-holding-heart"></i> Help Us</a>
-            <a href="report.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-flag"></i> Report Content</a>
+            <p class="text-secondary mb-3"><?php echo __('page.faq.still_need', array('email' => site_contact_email())); ?></p>
+            <a href="<?php echo app_url('contact.php'); ?>" class="btn btn-gradient btn-sm me-2"><i class="fa-solid fa-envelope"></i> <?php echo __('nav.contact'); ?></a>
+            <a href="<?php echo app_url('help-us.php'); ?>" class="btn btn-outline-custom btn-sm me-2"><i class="fa-solid fa-hand-holding-heart"></i> <?php echo __('nav.help_us'); ?></a>
+            <a href="<?php echo app_url('report.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-flag"></i> <?php echo __('nav.report'); ?></a>
         </div>
     </div>
 </div>

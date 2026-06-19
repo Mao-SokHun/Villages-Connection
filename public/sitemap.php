@@ -11,6 +11,7 @@ $pages = array(
     'help-us.php',
     'contact.php',
     'report.php',
+    'challenges.php',
     'terms.php',
     'privacy.php',
     'login.php',
@@ -35,7 +36,7 @@ foreach ($cats as $cat) {
     echo '</url>' . "\n";
 }
 
-$posts = $pdo->query("SELECT slug, created_at, updated_at FROM posts WHERE status = 'Published' ORDER BY COALESCE(updated_at, created_at) DESC")->fetchAll();
+$posts = $pdo->query("SELECT slug, created_at, updated_at FROM posts WHERE status = 'Published' AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) ORDER BY COALESCE(updated_at, created_at) DESC")->fetchAll();
 foreach ($posts as $post) {
     echo '  <url>';
     echo '<loc>' . htmlspecialchars($base . '/post/' . rawurlencode($post['slug'])) . '</loc>';

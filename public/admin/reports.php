@@ -20,28 +20,15 @@ if ($admin_post) {
             $notes = trim($_POST['admin_notes']);
         }
         $sql = "UPDATE content_reports SET status = 'resolved', admin_notes = :notes, resolved_at = CURRENT_TIMESTAMP WHERE id = :id";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(array('id' => $admin_post['id'], 'notes' => $notes));
-        if ($stmt->rowCount() > 0) {
-            $log_details = 'Report #' . $admin_post['id'];
-            if ($notes !== '') {
-                $log_details .= ' | Notes: ' . excerpt($notes, 100);
-            }
-            log_activity($pdo, 'report.resolved', $log_details);
-            notify_reporter_status_update($pdo, (int) $admin_post['id'], 'resolved', $notes);
-        }
+        $pdo->prepare($sql)->execute(array('id' => $admin_post['id'], 'notes' => $notes));
+        log_activity($pdo, 'report.resolved', 'Report #' . $admin_post['id']);
         setFlashMessage('success', 'Report marked as resolved.');
         header('Location: reports.php');
         exit;
     }
     if ($admin_post['action'] == 'open' && $admin_post['id'] > 0) {
         $sql = "UPDATE content_reports SET status = 'open', resolved_at = NULL WHERE id = :id";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(array('id' => $admin_post['id']));
-        if ($stmt->rowCount() > 0) {
-            log_activity($pdo, 'report.reopened', 'Report #' . $admin_post['id']);
-            notify_reporter_status_update($pdo, (int) $admin_post['id'], 'open', '');
-        }
+        $pdo->prepare($sql)->execute(array('id' => $admin_post['id']));
         setFlashMessage('info', 'Report reopened.');
         header('Location: reports.php');
         exit;

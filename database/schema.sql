@@ -48,12 +48,36 @@ CREATE TABLE posts (
     image_url VARCHAR(500),
     video_url VARCHAR(500),
     video_type VARCHAR(20) NOT NULL DEFAULT 'none',
+    post_kind VARCHAR(20) NOT NULL DEFAULT 'general',
+    knowledge_label VARCHAR(20) DEFAULT '',
+    mood_tag VARCHAR(20) DEFAULT '',
     location VARCHAR(150),
+    latitude NUMERIC(10, 7),
+    longitude NUMERIC(10, 7),
+    expires_at TIMESTAMP NULL,
+    archive_on_expiry BOOLEAN NOT NULL DEFAULT TRUE,
+    challenge_id INT NULL,
     is_featured BOOLEAN NOT NULL DEFAULT FALSE,
     status VARCHAR(20) NOT NULL DEFAULT 'Draft',
     views INT NOT NULL DEFAULT 0,
     likes INT NOT NULL DEFAULT 0,
     image_alt VARCHAR(255) DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE community_challenges (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(180) NOT NULL,
+    slug VARCHAR(180) UNIQUE NOT NULL,
+    description TEXT NOT NULL,
+    goal_type VARCHAR(20) NOT NULL DEFAULT 'posts',
+    goal_target INT NOT NULL DEFAULT 10,
+    reward_text VARCHAR(255) DEFAULT '',
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_by INT REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -124,6 +148,26 @@ CREATE TABLE activity_logs (
     details TEXT DEFAULT '',
     ip_address VARCHAR(45) DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE incident_reports (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    reporter_name VARCHAR(100) NOT NULL,
+    reporter_email VARCHAR(120) NOT NULL,
+    incident_type VARCHAR(40) NOT NULL,
+    priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+    title VARCHAR(180) NOT NULL,
+    details TEXT NOT NULL,
+    village_name VARCHAR(150) DEFAULT '',
+    location_text VARCHAR(255) DEFAULT '',
+    latitude NUMERIC(10, 7),
+    longitude NUMERIC(10, 7),
+    status VARCHAR(20) NOT NULL DEFAULT 'open',
+    admin_notes TEXT DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP
 );
 
 CREATE TABLE announcements (

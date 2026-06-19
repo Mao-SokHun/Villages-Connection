@@ -3,14 +3,12 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once APP_PATH . '/Core/oauth.php';
 
 if (isLoggedIn()) {
-    header('Location: ../index.php');
-    exit;
+    redirect_to('index.php');
 }
 
 if (!oauth_is_configured('google')) {
     setFlashMessage('warning', 'Google login is not configured yet.');
-    header('Location: ../login.php');
-    exit;
+    redirect_to('login.php');
 }
 
 $code = '';
@@ -25,8 +23,7 @@ if (isset($_GET['state'])) {
 
 if ($code == '') {
     setFlashMessage('danger', 'Google login was cancelled.');
-    header('Location: ../login.php');
-    exit;
+    redirect_to('login.php');
 }
 
 oauth_handle_callback('google', $code, $state);

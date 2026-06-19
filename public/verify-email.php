@@ -8,8 +8,7 @@ if (isset($_GET['token'])) {
 }
 
 if ($token == '') {
-    header('Location: login.php');
-    exit;
+    redirect_to('login.php');
 }
 
 $result = verify_email_with_token($pdo, $token);
@@ -19,5 +18,4 @@ if ($result['ok']) {
     setFlashMessage('danger', __('auth.verification_invalid'));
 }
 
-header('Location: login.php');
-exit;
+redirect_to('login.php');

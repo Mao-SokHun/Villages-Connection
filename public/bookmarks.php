@@ -36,7 +36,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                 <?php endforeach; ?>
             </div>
             <?php if ($data['pages'] > 1): ?>
-            <nav class="mt-4" aria-label="Bookmarks pagination">
+            <nav class="mt-4" aria-label="<?php echo htmlspecialchars(__('bookmarks.pagination')); ?>">
                 <ul class="pagination justify-content-center">
                     <?php for ($i = 1; $i <= $data['pages']; $i++): ?>
                     <li class="page-item <?php if ($i == $data['page']) echo 'active'; ?>">

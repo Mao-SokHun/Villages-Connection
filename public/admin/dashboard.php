@@ -39,11 +39,6 @@ try {
         $stmt->execute(array('uid' => $author_id));
         $total_likes = (int) $stmt->fetchColumn();
 
-        $sql = 'SELECT COUNT(*) FROM posts WHERE user_id = :uid AND is_featured = TRUE';
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(array('uid' => $author_id));
-        $featured_posts = (int) $stmt->fetchColumn();
-
         $sql = "SELECT p.*, c.name as category_name
                 FROM posts p
                 LEFT JOIN categories c ON p.category_id = c.id
@@ -100,7 +95,6 @@ try {
         $total_views = (int) $pdo->query("SELECT COALESCE(SUM(views), 0) FROM posts")->fetchColumn();
         $authors_count = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
         $total_likes = (int) $pdo->query('SELECT COALESCE(SUM(likes), 0) FROM posts')->fetchColumn();
-        $featured_posts = (int) $pdo->query('SELECT COUNT(*) FROM posts WHERE is_featured = TRUE')->fetchColumn();
         $admin_queue = admin_unread_counts($pdo);
 
         $sql = "SELECT p.*, c.name as category_name, u.name as author_name
@@ -178,6 +172,31 @@ if (isset($category_rows)) {
 }
 ?>
 
+<?php if (!$is_author_view && isset($admin_queue)):
+    $pending_total = (int) $admin_queue['pending_posts']
+        + (int) $admin_queue['pending_comments']
+        + (int) $admin_queue['reports']
+        + (int) $admin_queue['messages']
+        + (int) $admin_queue['incidents'];
+    if ($pending_total > 0):
+?>
+<div class="alert alert-warning glass-panel-sm dash-pending-alert reveal mb-4" role="alert">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <strong><i class="fa-solid fa-bell me-2"></i>Action needed:</strong>
+            <span class="text-secondary"><?php echo $pending_total; ?> item(s) waiting for review.</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <?php if ($admin_queue['pending_posts'] > 0): ?><a href="<?php echo admin_area_url('posts.php?status=Pending'); ?>" class="btn btn-sm btn-outline-custom"><?php echo (int) $admin_queue['pending_posts']; ?> posts</a><?php endif; ?>
+            <?php if ($admin_queue['pending_comments'] > 0): ?><a href="<?php echo admin_area_url('comments.php?status=pending'); ?>" class="btn btn-sm btn-outline-custom"><?php echo (int) $admin_queue['pending_comments']; ?> comments</a><?php endif; ?>
+            <?php if ($admin_queue['incidents'] > 0): ?><a href="<?php echo admin_area_url('incidents.php'); ?>" class="btn btn-sm btn-outline-custom"><?php echo (int) $admin_queue['incidents']; ?> incidents</a><?php endif; ?>
+            <?php if ($admin_queue['reports'] > 0): ?><a href="<?php echo admin_area_url('reports.php'); ?>" class="btn btn-sm btn-outline-custom"><?php echo (int) $admin_queue['reports']; ?> reports</a><?php endif; ?>
+            <?php if ($admin_queue['messages'] > 0): ?><a href="<?php echo admin_area_url('messages.php'); ?>" class="btn btn-sm btn-outline-custom"><?php echo (int) $admin_queue['messages']; ?> messages</a><?php endif; ?>
+        </div>
+    </div>
+</div>
+<?php endif; endif; ?>
+
 <?php if ($is_author_view): ?>
 
 <div class="glass-panel dash-stats-bar mb-4 reveal">
@@ -199,7 +218,7 @@ if (isset($category_rows)) {
     <div class="dash-stat-item">
         <span class="dash-stat-label"><i class="fa-solid fa-user-group"></i> Followers</span>
         <span class="dash-stat-value"><?php echo number_format($author_followers); ?></span>
-        <span class="dash-stat-sub"><?php echo $author_following; ?> following · <?php echo $featured_posts; ?> featured</span>
+        <span class="dash-stat-sub"><?php echo $author_following; ?> following</span>
     </div>
 </div>
 <?php else: ?>
@@ -222,7 +241,7 @@ if (isset($category_rows)) {
     <div class="dash-stat-item">
         <span class="dash-stat-label"><i class="fa-solid fa-users"></i> Members</span>
         <span class="dash-stat-value"><?php echo $authors_count; ?></span>
-        <span class="dash-stat-sub"><?php echo $featured_posts; ?> featured posts</span>
+        <span class="dash-stat-sub">All registered users</span>
     </div>
 </div>
 
@@ -230,29 +249,36 @@ if (isset($category_rows)) {
 <div class="glass-panel p-4 mb-4 reveal">
     <h4 class="text-white mb-3"><i class="fa-solid fa-list-check text-warning me-2"></i>Moderation Queue</h4>
     <div class="row g-3">
-        <div class="col-6 col-md-3">
-            <a href="posts.php?status=Pending" class="dash-action-card <?php echo $admin_queue['pending_posts'] > 0 ? 'dash-action-primary' : ''; ?>">
+        <div class="col-6 col-md-4 col-lg">
+            <a href="<?php echo admin_area_url('posts.php?status=Pending'); ?>" class="dash-action-card <?php echo $admin_queue['pending_posts'] > 0 ? 'dash-action-primary' : ''; ?>">
                 <span class="dash-action-icon"><i class="fa-solid fa-hourglass-half"></i></span>
                 <span class="dash-action-label">Pending Posts</span>
                 <span class="dash-action-meta"><?php echo $admin_queue['pending_posts']; ?> waiting</span>
             </a>
         </div>
-        <div class="col-6 col-md-3">
-            <a href="comments.php?status=pending" class="dash-action-card <?php echo $admin_queue['pending_comments'] > 0 ? 'dash-action-primary' : ''; ?>">
+        <div class="col-6 col-md-4 col-lg">
+            <a href="<?php echo admin_area_url('comments.php?status=pending'); ?>" class="dash-action-card <?php echo $admin_queue['pending_comments'] > 0 ? 'dash-action-primary' : ''; ?>">
                 <span class="dash-action-icon"><i class="fa-solid fa-comments"></i></span>
                 <span class="dash-action-label">Pending Comments</span>
                 <span class="dash-action-meta"><?php echo $admin_queue['pending_comments']; ?> waiting</span>
             </a>
         </div>
-        <div class="col-6 col-md-3">
-            <a href="reports.php" class="dash-action-card <?php echo $admin_queue['reports'] > 0 ? 'dash-action-primary' : ''; ?>">
+        <div class="col-6 col-md-4 col-lg">
+            <a href="<?php echo admin_area_url('incidents.php'); ?>" class="dash-action-card <?php echo $admin_queue['incidents'] > 0 ? 'dash-action-primary' : ''; ?>">
+                <span class="dash-action-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                <span class="dash-action-label">Open Incidents</span>
+                <span class="dash-action-meta"><?php echo $admin_queue['incidents']; ?> open</span>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg">
+            <a href="<?php echo admin_area_url('reports.php'); ?>" class="dash-action-card <?php echo $admin_queue['reports'] > 0 ? 'dash-action-primary' : ''; ?>">
                 <span class="dash-action-icon"><i class="fa-solid fa-flag"></i></span>
                 <span class="dash-action-label">Open Reports</span>
                 <span class="dash-action-meta"><?php echo $admin_queue['reports']; ?> open</span>
             </a>
         </div>
-        <div class="col-6 col-md-3">
-            <a href="messages.php" class="dash-action-card <?php echo $admin_queue['messages'] > 0 ? 'dash-action-primary' : ''; ?>">
+        <div class="col-6 col-md-4 col-lg">
+            <a href="<?php echo admin_area_url('messages.php'); ?>" class="dash-action-card <?php echo $admin_queue['messages'] > 0 ? 'dash-action-primary' : ''; ?>">
                 <span class="dash-action-icon"><i class="fa-solid fa-envelope"></i></span>
                 <span class="dash-action-label">New Messages</span>
                 <span class="dash-action-meta"><?php echo $admin_queue['messages']; ?> unread</span>
@@ -422,7 +448,7 @@ if (isset($category_rows)) {
                             <td class="text-end">
                                 <a href="posts.php?action=edit&id=<?php echo $art['id']; ?>" class="text-indigo p-2" title="Edit"><i class="fa-solid fa-edit"></i></a>
                                 <?php if ($art['status'] == 'Published'): ?>
-                                <a href="../post.php?slug=<?php echo urlencode($art['slug']); ?>" class="text-indigo p-2" title="View" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                                <a href="<?php echo htmlspecialchars(post_url($art['slug'], '../')); ?>" class="text-indigo p-2" title="View" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
                                 <?php endif; ?>
                             </td>
                         </tr>

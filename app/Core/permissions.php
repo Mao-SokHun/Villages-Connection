@@ -37,6 +37,19 @@ function ensure_active_authenticated_user($pdo)
         return null;
     }
 
+    $checked_at = isset($_SESSION['auth_checked_at']) ? (int) $_SESSION['auth_checked_at'] : 0;
+    if ($checked_at > 0 && (time() - $checked_at) < 60) {
+        return array(
+            'id' => (int) $_SESSION['user_id'],
+            'name' => isset($_SESSION['user_name']) ? $_SESSION['user_name'] : '',
+            'email' => isset($_SESSION['user_email']) ? $_SESSION['user_email'] : '',
+            'role' => isset($_SESSION['user_role']) ? $_SESSION['user_role'] : '',
+            'avatar' => isset($_SESSION['user_avatar']) ? $_SESSION['user_avatar'] : '',
+            'account_status' => 'active',
+            'is_banned' => false,
+        );
+    }
+
     $user = authenticated_user_from_db($pdo);
     if (!$user || user_is_deleted($user)) {
         logout_closed_account();
@@ -46,6 +59,7 @@ function ensure_active_authenticated_user($pdo)
     }
 
     apply_user_to_session($user);
+    $_SESSION['auth_checked_at'] = time();
 
     return $user;
 }
