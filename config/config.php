@@ -111,20 +111,8 @@ date_default_timezone_set(APP_TIMEZONE);
 
 require_once __DIR__ . '/../app/Core/rate_limit.php';
 require_once __DIR__ . '/../app/Core/security.php';
+require_once __DIR__ . '/../app/Core/session.php';
 normalize_https_request();
-
-if (session_status() == PHP_SESSION_NONE) {
-    session_set_cookie_params(array(
-        'lifetime' => 0,
-        'path' => '/',
-        'secure' => request_is_https(),
-        'httponly' => true,
-        'samesite' => 'Lax'
-    ));
-
-    ini_set('session.use_strict_mode', '1');
-    session_start();
-}
 
 $db_host = env_var('DB_HOST', '127.0.0.1');
 define('DB_HOST', $db_host);
@@ -282,7 +270,10 @@ function perform_logout($flash_type = '', $flash_message = '')
         setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
     }
     session_destroy();
-    session_start();
+
+    global $pdo;
+    app_start_session($pdo);
+
     if ($flash_type != '' && $flash_message != '') {
         setFlashMessage($flash_type, $flash_message);
     }

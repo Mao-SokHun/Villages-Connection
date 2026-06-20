@@ -457,6 +457,8 @@ APP_TIMEZONE=Asia/Phnom_Penh
 TRUST_PROXY=true
 PRETTY_URLS=true
 DB_PERSISTENT=false
+SESSION_DRIVER=database
+RATE_LIMIT_DRIVER=database
 
 DB_HOST=aws-1-ap-southeast-1.pooler.supabase.com
 DB_PORT=5432
@@ -515,6 +517,8 @@ php database/migrate_incident_reports.php
 php database/migrate_phase25.php
 ```
 
+`migrate.php` includes **`migrate_php_sessions.php`** — required so login survives page changes and language switch on Vercel.
+
 Or use Docker: `docker compose run --rm app php database/migrate.php`
 
 ### Step 6 — Test
@@ -529,7 +533,7 @@ Or use Docker: `docker compose run --rm app php database/migrate.php`
 
 - No local `/uploads/` persistence → **Cloudinary required**
 - No `ffmpeg` in serverless → video processing limited
-- Sessions may reset on cold starts
+- **Sessions:** use `SESSION_DRIVER=database` + run migrations — login persists across requests (required for language switch)
 - Admin DB backup download may not work on serverless
 - Max upload ~64MB (`api/php.ini`)
 

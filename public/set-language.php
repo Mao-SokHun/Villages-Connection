@@ -9,11 +9,9 @@ if (isset($_GET['lang'])) {
 
 set_user_locale($locale);
 
-if (session_status() === PHP_SESSION_ACTIVE) {
-    session_write_close();
-}
-
 $redirect = safe_redirect_path(isset($_GET['redirect']) ? $_GET['redirect'] : '', 'index.php');
+
+app_commit_session();
 
 header('Location: ' . app_url($redirect));
 exit;

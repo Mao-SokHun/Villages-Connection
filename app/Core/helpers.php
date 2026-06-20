@@ -218,67 +218,15 @@ function render_code_logo($variant = 'nav', $extra_class = '')
     }
 
     $label = htmlspecialchars(site_logo_alt(), ENT_QUOTES, 'UTF-8');
-    $cx = 178;
-    $cy = 38;
-    $outer_points = array();
-    $inner_points = array();
-
-    for ($i = 0; $i < 8; $i++) {
-        $angle = deg2rad(-90 + ($i * 45));
-        $outer_points[] = array(
-            round($cx + (30 * cos($angle)), 1),
-            round($cy + (30 * sin($angle)), 1),
-        );
-    }
-
-    for ($i = 0; $i < 6; $i++) {
-        $angle = deg2rad(-90 + ($i * 60));
-        $inner_points[] = array(
-            round($cx + (16 * cos($angle)), 1),
-            round($cy + (16 * sin($angle)), 1),
-        );
-    }
+    $show_tagline = ($variant !== 'nav');
+    $view_width = $show_tagline ? 280 : 168;
 
     $html = '<span class="' . htmlspecialchars($classes, ENT_QUOTES, 'UTF-8') . '" role="img" aria-label="' . $label . '">';
-    $html .= '<svg class="brand-mark-svg vc-logo" viewBox="0 0 300 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">';
+    $html .= '<svg class="brand-mark-svg vc-logo" viewBox="0 0 ' . $view_width . ' 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">';
+    $html .= '<text class="vc-logo-text" fill="currentColor" x="0" y="48">villages</text>';
 
-    $html .= '<g class="vc-logo-network" aria-hidden="true">';
-    $html .= '<circle class="vc-logo-ring" cx="' . $cx . '" cy="' . $cy . '" r="32"></circle>';
-    $html .= '<circle class="vc-logo-ring vc-logo-ring--inner" cx="' . $cx . '" cy="' . $cy . '" r="20"></circle>';
-
-    foreach ($outer_points as $point) {
-        $html .= '<line class="vc-logo-link" x1="' . $cx . '" y1="' . $cy . '" x2="' . $point[0] . '" y2="' . $point[1] . '"></line>';
-    }
-
-    for ($i = 0; $i < 8; $i++) {
-        $next = ($i + 1) % 8;
-        $html .= '<line class="vc-logo-link vc-logo-link--outer" x1="' . $outer_points[$i][0] . '" y1="' . $outer_points[$i][1] . '" x2="' . $outer_points[$next][0] . '" y2="' . $outer_points[$next][1] . '"></line>';
-    }
-
-    foreach ($inner_points as $point) {
-        $html .= '<line class="vc-logo-link vc-logo-link--inner" x1="' . $cx . '" y1="' . $cy . '" x2="' . $point[0] . '" y2="' . $point[1] . '"></line>';
-    }
-
-    for ($i = 0; $i < 6; $i++) {
-        $next = ($i + 1) % 6;
-        $html .= '<line class="vc-logo-link vc-logo-link--inner" x1="' . $inner_points[$i][0] . '" y1="' . $inner_points[$i][1] . '" x2="' . $inner_points[$next][0] . '" y2="' . $inner_points[$next][1] . '"></line>';
-    }
-
-    foreach ($inner_points as $point) {
-        $html .= '<circle class="vc-logo-node vc-logo-node--mini" cx="' . $point[0] . '" cy="' . $point[1] . '" r="2.4"></circle>';
-    }
-
-    foreach ($outer_points as $point) {
-        $html .= '<circle class="vc-logo-node vc-logo-node--outer" cx="' . $point[0] . '" cy="' . $point[1] . '" r="4.2"></circle>';
-    }
-
-    $html .= '<circle class="vc-logo-node vc-logo-node--core" cx="' . $cx . '" cy="' . $cy . '" r="7.5"></circle>';
-    $html .= '</g>';
-
-    $html .= '<text class="vc-logo-text" fill="currentColor" x="6" y="54">villages</text>';
-
-    if ($variant !== 'nav') {
-        $html .= '<text class="vc-logo-tagline" fill="currentColor" x="292" y="66" text-anchor="end">connection</text>';
+    if ($show_tagline) {
+        $html .= '<text class="vc-logo-tagline" fill="currentColor" x="' . ($view_width - 2) . '" y="58" text-anchor="end">connection</text>';
     }
 
     $html .= '</svg></span>';

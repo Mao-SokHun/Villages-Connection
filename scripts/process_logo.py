@@ -3,11 +3,9 @@ import numpy as np
 from collections import deque
 from pathlib import Path
 
-src = Path(
-    r'C:\Users\LyhourMao\.cursor\projects\d-Programming-in-University-PHP-Project-Viilages-Connection'
-    r'\assets\c__Users_LyhourMao_AppData_Roaming_Cursor_User_workspaceStorage_99d7d6dd5828fbd88c235cd0ebe1427a'
-    r'_images_1-d39b082f-9bad-4f83-86bc-b871e15e4d0e.png'
-)
+src = Path(__file__).resolve().parents[1] / 'assets' / 'logo-source.png'
+if not src.exists():
+    src = Path(__file__).resolve().parents[1] / 'public' / 'icons' / 'logo-full.png'
 out_dir = Path(__file__).resolve().parents[1] / 'public' / 'icons'
 
 

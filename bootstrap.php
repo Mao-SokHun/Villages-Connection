@@ -8,6 +8,8 @@ if (file_exists(ROOT_PATH . '/vendor/autoload.php')) {
 }
 require_once CONFIG_PATH . '/database.php';
 
+app_start_session($pdo);
+
 require_once APP_PATH . '/bootstrap/core.php';
 bootstrap_load_core_modules(false);
 

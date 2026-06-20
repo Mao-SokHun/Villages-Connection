@@ -21,6 +21,7 @@ $migrations = array(
     'migrate_phase3.php',
     'migrate_phase4.php',
     'migrate_phase5.php',
+    'migrate_php_sessions.php',
 );
 
 try {

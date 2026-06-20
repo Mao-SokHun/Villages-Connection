@@ -358,14 +358,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 .vc-logo-text {
     font-family: 'Fredoka', var(--font-en), sans-serif;
-    font-size: 46px;
+    font-size: 52px;
     font-weight: 700;
     letter-spacing: -0.03em;
     text-transform: lowercase;
 }
 .vc-logo-tagline {
     font-family: var(--font-en), 'Inter', system-ui, sans-serif;
-    font-size: 7px;
+    font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: lowercase;
@@ -380,57 +380,12 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme="light"] .navbar-brand-custom .brand-mark {
     color: #000000;
 }
-[data-theme="dark"] .vc-logo-ring {
-    stroke-opacity: 0.22;
-}
-[data-theme="dark"] .vc-logo-link {
-    stroke-opacity: 0.48;
-}
-[data-theme="dark"] .vc-logo-link--outer {
-    stroke-opacity: 0.36;
-}
-[data-theme="dark"] .vc-logo-link--inner {
-    stroke-opacity: 0.42;
-}
-.vc-logo-ring {
-    fill: none;
-    stroke: #ff4d2d;
-    stroke-opacity: 0.14;
-    stroke-width: 0.9;
-}
-.vc-logo-ring--inner {
-    stroke-opacity: 0.1;
-}
-.vc-logo-link {
-    stroke: #ff4d2d;
-    stroke-opacity: 0.38;
-    stroke-width: 1;
-    stroke-linecap: round;
-}
-.vc-logo-link--outer {
-    stroke-opacity: 0.28;
-}
-.vc-logo-link--inner {
-    stroke-opacity: 0.32;
-}
-.vc-logo-node {
-    fill: #ff4d2d;
-}
-.vc-logo-node--core {
-    fill: #ff4d2d;
-}
-.vc-logo-node--outer {
-    fill: #ff4d2d;
-}
-.vc-logo-node--mini {
-    fill: #ff5533;
-}
 .brand-mark--nav {
-    width: clamp(132px, 12vw, 160px);
+    width: clamp(88px, 9vw, 112px);
 }
 .brand-mark--footer,
 .brand-mark--auth {
-    width: clamp(180px, 20vw, 228px);
+    width: clamp(140px, 18vw, 180px);
 }
 .footer-brand-link .brand-mark,
 .auth-side .brand-mark {
@@ -5431,11 +5386,11 @@ body.has-reading-progress { scroll-padding-top: 92px; }
         max-height: 38px;
     }
     .brand-mark--nav {
-        width: clamp(136px, 38vw, 168px);
+        width: clamp(84px, 24vw, 108px);
     }
     .brand-mark--footer,
     .brand-mark--auth {
-        width: clamp(156px, 42vw, 196px);
+        width: clamp(120px, 34vw, 156px);
     }
     .brand-icon {
         width: 38px;
@@ -5523,7 +5478,7 @@ body.has-reading-progress { scroll-padding-top: 92px; }
     }
 
     .brand-mark--nav {
-        width: clamp(158px, 13vw, 196px);
+        width: clamp(96px, 10vw, 118px);
     }
 
     .navbar-collapse {
@@ -5804,7 +5759,7 @@ body.has-reading-progress { scroll-padding-top: 92px; }
     }
 
     .brand-mark--nav {
-        width: clamp(142px, 11vw, 168px);
+        width: clamp(88px, 9vw, 108px);
     }
 }
 
