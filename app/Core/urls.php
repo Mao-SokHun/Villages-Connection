@@ -220,6 +220,9 @@ function redirect_to($path, $status = 302)
 {
     $path = safe_redirect_path($path, 'index.php');
     $url = app_url($path);
+    if (function_exists('app_commit_session')) {
+        app_commit_session();
+    }
     header('Location: ' . $url, true, (int) $status);
     exit;
 }
@@ -330,6 +333,10 @@ function enforce_pretty_url_redirect()
 
     if ($current === $target_path) {
         return;
+    }
+
+    if (function_exists('app_commit_session')) {
+        app_commit_session();
     }
 
     header('Location: ' . $target, true, 301);

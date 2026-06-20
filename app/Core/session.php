@@ -231,12 +231,23 @@ function app_start_session($pdo = null)
 
     session_set_cookie_params(app_session_cookie_params());
     ini_set('session.use_strict_mode', '1');
+    ini_set('session.lazy_write', '0');
 
     if ($pdo instanceof PDO && session_driver_name() === 'database') {
         register_database_session_handler($pdo);
     }
 
     session_start();
+
+    static $shutdown_registered = false;
+    if (!$shutdown_registered) {
+        $shutdown_registered = true;
+        register_shutdown_function(static function () {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+        });
+    }
 }
 
 function app_commit_session()
