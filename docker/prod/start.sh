@@ -3,7 +3,10 @@ set -euo pipefail
 
 PORT="${PORT:-8000}"
 
+rm -f /etc/nginx/sites-enabled/default
+
 sed "s/__PORT__/${PORT}/g" /etc/nginx/templates/default.conf > /etc/nginx/conf.d/default.conf
+nginx -t
 
 mkdir -p \
     /var/www/html/storage/cache \
