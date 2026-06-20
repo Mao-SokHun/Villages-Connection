@@ -49,6 +49,44 @@ class UrlsTest extends TestCase
         $this->assertSame('/admin/posts?action=add', route_url('admin.posts', array('action' => 'add')));
     }
 
+    public function testFeedUrlUsesCleanPaths()
+    {
+        putenv('PRETTY_URLS=true');
+        $this->assertSame('/', feed_url(array()));
+        $this->assertSame('/popular', feed_url(array('sort' => 'popular')));
+        $this->assertSame('/following', feed_url(array('sort' => 'following')));
+        $this->assertSame('/category/news', feed_url(array('cat' => 'news')));
+        $this->assertSame('/popular/category/news', feed_url(array('sort' => 'popular', 'cat' => 'news')));
+        $this->assertSame('/popular?page=2', feed_url(array('sort' => 'popular', 'page' => 2)));
+        $this->assertSame('/popular', app_url('index.php?sort=popular'));
+        $this->assertSame('/category/events', app_url('index.php?cat=events'));
+    }
+
+    public function testFeedRouteMatch()
+    {
+        $this->assertSame(array('sort' => 'popular'), route_registry_feed_match('/popular'));
+        $this->assertSame(array('cat' => 'news'), route_registry_feed_match('/category/news'));
+        $this->assertSame(
+            array('sort' => 'popular', 'cat' => 'news'),
+            route_registry_feed_match('/popular/category/news')
+        );
+        $this->assertNull(route_registry_feed_match('/login'));
+    }
+
+    public function testIndexPhpRedirectUsesFeedPaths()
+    {
+        putenv('PRETTY_URLS=true');
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+        $_SERVER['QUERY_STRING'] = 'sort=popular&cat=news';
+        $_GET['sort'] = 'popular';
+        $_GET['cat'] = 'news';
+
+        $this->assertSame('/popular/category/news', exposed_php_redirect_url());
+
+        unset($_GET['sort'], $_GET['cat']);
+        unset($_SERVER['QUERY_STRING']);
+    }
+
     public function testAuthUrl()
     {
         $this->assertSame('/auth/google.php', auth_url('google'));

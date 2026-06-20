@@ -13,12 +13,23 @@ bootstrap_load_core_modules(false);
 
 init_locale();
 
-ensure_admin_tables_loaded($pdo);
-archive_expired_posts($pdo);
+$bootstrap_light_request = false;
+$bootstrap_path = request_uri_path();
+if (strpos($bootstrap_path, '/api/') === 0 || strpos($bootstrap_path, '/auth/') === 0) {
+    $bootstrap_light_request = true;
+}
 
 $current_script = '';
 if (isset($_SERVER['SCRIPT_NAME'])) {
     $current_script = basename(str_replace('\\', '/', $_SERVER['SCRIPT_NAME']));
+}
+if ($current_script === 'set-language.php' || $current_script === 'health.php') {
+    $bootstrap_light_request = true;
+}
+
+if (!$bootstrap_light_request) {
+    ensure_admin_tables_loaded($pdo);
+    archive_expired_posts($pdo);
 }
 
 if (isLoggedIn() && $current_script !== 'set-language.php') {

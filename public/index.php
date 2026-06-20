@@ -192,7 +192,7 @@ if ($author_id > 0) {
                 <p class="hero-welcome__desc"><?php echo __('home.logged_desc'); ?></p>
                 <div class="hero-welcome__actions">
                     <a href="#posts-feed" class="hero-action hero-action--primary"><i class="fa-solid fa-images" aria-hidden="true"></i><span><?php echo __('home.browse_feed'); ?></span></a>
-                    <a href="<?php echo app_url('index.php?sort=following'); ?>" class="hero-action"><i class="fa-solid fa-user-group" aria-hidden="true"></i><span><?php echo __('nav.following'); ?></span></a>
+                    <a href="<?php echo feed_url(array('sort' => 'following')); ?>" class="hero-action"><i class="fa-solid fa-user-group" aria-hidden="true"></i><span><?php echo __('nav.following'); ?></span></a>
                     <a href="<?php echo create_post_url(); ?>" class="hero-action"><i class="fa-solid fa-plus" aria-hidden="true"></i><span><?php echo __('home.create_post'); ?></span></a>
                     <?php if (isAdmin() || (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'author')): ?>
                     <a href="<?php echo admin_area_url('dashboard.php'); ?>" class="hero-action"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span><?php echo __('nav.dashboard'); ?></span></a>

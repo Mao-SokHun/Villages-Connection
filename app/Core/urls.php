@@ -10,6 +10,77 @@ function pretty_urls_enabled()
     return true;
 }
 
+function feed_pretty_path($sort, $cat)
+{
+    $sort = trim((string) $sort);
+    $cat = trim((string) $cat);
+
+    if ($cat !== '') {
+        if ($sort === 'popular') {
+            return '/popular/category/' . rawurlencode($cat);
+        }
+        if ($sort === 'following') {
+            return '/following/category/' . rawurlencode($cat);
+        }
+
+        return '/category/' . rawurlencode($cat);
+    }
+
+    if ($sort === 'popular') {
+        return '/popular';
+    }
+    if ($sort === 'following') {
+        return '/following';
+    }
+
+    return '/';
+}
+
+function feed_url($params = array(), $base_path = '')
+{
+    $sort = 'latest';
+    if (isset($params['sort'])) {
+        $sort = trim((string) $params['sort']);
+        if ($sort === '') {
+            $sort = 'latest';
+        }
+    }
+
+    $cat = isset($params['cat']) ? trim((string) $params['cat']) : '';
+    $search = isset($params['search']) ? trim((string) $params['search']) : '';
+    $author = isset($params['author']) ? (int) $params['author'] : 0;
+    $page = isset($params['page']) ? (int) $params['page'] : 0;
+
+    if (!pretty_urls_enabled()) {
+        return build_query_url($base_path . 'index.php', array(
+            'sort' => $sort !== 'latest' ? $sort : '',
+            'cat' => $cat,
+            'search' => $search,
+            'author' => $author > 0 ? $author : '',
+            'page' => $page > 1 ? $page : '',
+        ));
+    }
+
+    $path = feed_pretty_path($sort, $cat);
+    $query = array();
+
+    if ($search !== '') {
+        $query['search'] = $search;
+    }
+    if ($author > 0) {
+        $query['author'] = $author;
+    }
+    if ($page > 1) {
+        $query['page'] = $page;
+    }
+
+    if (count($query) === 0) {
+        return $path;
+    }
+
+    return $path . '?' . http_build_query($query);
+}
+
 function pretty_route_lookup($script_path)
 {
     $script_path = ltrim(str_replace('\\', '/', $script_path), '/');
@@ -66,6 +137,15 @@ function app_url($path, $base_path = '')
 
     if (pretty_urls_enabled()) {
         $normalized = ltrim(str_replace('\\', '/', (string) $path), '/');
+        if (preg_match('#^index\.php(?:\?(.*))?$#i', $normalized, $index_matches)) {
+            $feed_params = array();
+            if (isset($index_matches[1]) && $index_matches[1] !== '') {
+                parse_str($index_matches[1], $feed_params);
+            }
+
+            return feed_url($feed_params, $base_path);
+        }
+
         if (preg_match('#^post\.php\?(.*)$#', $normalized, $post_matches)) {
             parse_str($post_matches[1], $post_params);
             if (isset($post_params['slug']) && trim((string) $post_params['slug']) !== '') {
@@ -194,12 +274,34 @@ function exposed_php_redirect_url()
         $pretty = profile_url((int) $_GET['id']);
     } elseif (basename($relative) === 'post.php' && isset($_GET['slug']) && trim((string) $_GET['slug']) !== '') {
         $pretty = post_url(trim((string) $_GET['slug']));
+    } elseif (basename($relative) === 'index.php') {
+        $feed_params = array();
+        if (isset($_GET['sort']) && trim((string) $_GET['sort']) !== '' && trim((string) $_GET['sort']) !== 'latest') {
+            $feed_params['sort'] = trim((string) $_GET['sort']);
+        }
+        if (isset($_GET['cat']) && trim((string) $_GET['cat']) !== '') {
+            $feed_params['cat'] = trim((string) $_GET['cat']);
+        }
+        if (isset($_GET['search']) && trim((string) $_GET['search']) !== '') {
+            $feed_params['search'] = trim((string) $_GET['search']);
+        }
+        if (isset($_GET['author']) && (int) $_GET['author'] > 0) {
+            $feed_params['author'] = (int) $_GET['author'];
+        }
+        if (isset($_GET['page']) && (int) $_GET['page'] > 1) {
+            $feed_params['page'] = (int) $_GET['page'];
+        }
+        $pretty = feed_url($feed_params);
     } else {
         $pretty = pretty_route_lookup(basename($relative));
     }
 
     if ($pretty === null) {
         return null;
+    }
+
+    if (basename($relative) === 'index.php') {
+        return $pretty;
     }
 
     $query = '';
@@ -230,11 +332,6 @@ function enforce_pretty_url_redirect()
         return;
     }
 
-    $base = '';
-    if (defined('APP_URL') && APP_URL != '') {
-        $base = rtrim(APP_URL, '/');
-    }
-
-    header('Location: ' . $base . $target, true, 301);
+    header('Location: ' . $target, true, 301);
     exit;
 }

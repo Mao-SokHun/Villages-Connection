@@ -15,7 +15,7 @@
                         <h6 class="footer-section-title"><?php echo __('footer.explore'); ?></h6>
                         <ul class="list-unstyled footer-link-list mb-0">
                             <li><a href="<?php echo app_url('index.php'); ?>" class="footer-link"><?php echo __('footer.feed'); ?></a></li>
-                            <li><a href="<?php echo app_url('index.php?sort=popular'); ?>" class="footer-link"><?php echo __('footer.popular'); ?></a></li>
+                            <li><a href="<?php echo feed_url(array('sort' => 'popular')); ?>" class="footer-link"><?php echo __('footer.popular'); ?></a></li>
                             <li><a href="<?php echo app_url('about.php'); ?>" class="footer-link"><?php echo __('footer.about'); ?></a></li>
                         </ul>
                     </div>
@@ -77,7 +77,7 @@ if (!$is_admin_dir):
         <span class="mobile-tab-icon"><i class="fa-solid fa-house" aria-hidden="true"></i></span>
         <span class="mobile-tab-label"><?php echo __('nav.feed'); ?></span>
     </a>
-    <a href="<?php echo app_url('index.php?sort=popular'); ?>" class="mobile-tab-item<?php if ($mobile_tab === 'popular') echo ' is-active'; ?>"<?php if ($mobile_tab === 'popular') echo ' aria-current="page"'; ?>>
+    <a href="<?php echo feed_url(array('sort' => 'popular')); ?>" class="mobile-tab-item<?php if ($mobile_tab === 'popular') echo ' is-active'; ?>"<?php if ($mobile_tab === 'popular') echo ' aria-current="page"'; ?>>
         <span class="mobile-tab-icon"><i class="fa-solid fa-fire" aria-hidden="true"></i></span>
         <span class="mobile-tab-label"><?php echo __('nav.popular'); ?></span>
     </a>

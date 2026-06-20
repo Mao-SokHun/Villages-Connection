@@ -102,14 +102,18 @@ if (!isset($canonical_url) || $canonical_url == '') {
     <link href="https://fonts.googleapis.com/css2?family=Estonia&family=Fredoka:wght@600;700&family=Inter:opsz,wght@14..32,400..700&family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preload" href="<?php echo public_asset_url('css/style.css'); ?>?v=<?php echo asset_version('css/style.css'); ?>" as="style">
     <link href="<?php echo public_asset_url('css/style.css'); ?>?v=<?php echo asset_version('css/style.css'); ?>" rel="stylesheet">
     <link rel="manifest" href="<?php echo public_asset_url('manifest.webmanifest'); ?>">
-    <link rel="icon" type="image/png" href="<?php echo public_asset_url('icons/logo.png'); ?>?v=<?php echo asset_version('icons/logo.png'); ?>">
+    <link rel="icon" href="<?php echo site_favicon_url('favicon.ico'); ?>" sizes="any">
+    <link rel="icon" type="image/svg+xml" href="<?php echo site_favicon_url('favicon.svg'); ?>">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo site_favicon_url('favicon-32.png'); ?>">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?php echo site_favicon_url('favicon-16.png'); ?>">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?php echo site_favicon_url('apple-touch-icon.png'); ?>">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="<?php echo public_asset_url('icons/logo.png'); ?>">
     <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token()); ?>">
     <script>
     window.APP_BASE = <?php echo json_encode($base_path); ?>;
@@ -182,13 +186,13 @@ if (!isset($canonical_url) || $canonical_url == '') {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-custom <?php if (isset($_GET['sort']) && $_GET['sort'] == 'popular') echo 'active'; ?>" href="<?php echo app_url('index.php?sort=popular'); ?>">
+                    <a class="nav-link nav-link-custom <?php if (isset($_GET['sort']) && $_GET['sort'] == 'popular') echo 'active'; ?>" href="<?php echo feed_url(array('sort' => 'popular')); ?>">
                         <i class="fa-solid fa-fire"></i><span><?php echo __('nav.popular'); ?></span>
                     </a>
                 </li>
                 <?php if (isLoggedIn()): ?>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-custom <?php if (isset($_GET['sort']) && $_GET['sort'] == 'following') echo 'active'; ?>" href="<?php echo app_url('index.php?sort=following'); ?>">
+                    <a class="nav-link nav-link-custom <?php if (isset($_GET['sort']) && $_GET['sort'] == 'following') echo 'active'; ?>" href="<?php echo feed_url(array('sort' => 'following')); ?>">
                         <i class="fa-solid fa-user-group"></i><span><?php echo __('nav.following'); ?></span>
                     </a>
                 </li>
@@ -248,7 +252,7 @@ if (!isset($canonical_url) || $canonical_url == '') {
                         foreach (nav_category_list($pdo) as $nc):
                         ?>
                         <li>
-                            <a class="dropdown-item-custom" href="<?php echo app_url('index.php?cat=' . rawurlencode($nc['slug'])); ?>">
+                            <a class="dropdown-item-custom" href="<?php echo feed_url(array('cat' => $nc['slug'])); ?>">
                                 <span class="dropdown-item-icon"><?php echo render_category_icon($nc['icon'], ''); ?></span>
                                 <span class="dropdown-item-text"><?php echo htmlspecialchars($nc['name']); ?></span>
                             </a>

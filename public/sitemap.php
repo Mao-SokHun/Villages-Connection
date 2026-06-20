@@ -31,7 +31,7 @@ foreach ($pages as $page) {
 $cats = $pdo->query("SELECT slug FROM categories ORDER BY name ASC")->fetchAll();
 foreach ($cats as $cat) {
     echo '  <url>';
-    echo '<loc>' . htmlspecialchars($base . '/index.php?cat=' . urlencode($cat['slug'])) . '</loc>';
+    echo '<loc>' . htmlspecialchars($base . feed_url(array('cat' => $cat['slug']))) . '</loc>';
     echo '<changefreq>weekly</changefreq>';
     echo '</url>' . "\n";
 }

@@ -171,6 +171,25 @@ function site_logo_url()
     return public_asset_url('icons/logo.png');
 }
 
+function site_favicon_url($name = 'favicon.ico')
+{
+    $allowed = array(
+        'favicon.ico',
+        'favicon.svg',
+        'favicon-16.png',
+        'favicon-32.png',
+        'apple-touch-icon.png',
+        'icon-192.png',
+        'icon-512.png',
+    );
+
+    if (!in_array($name, $allowed, true)) {
+        $name = 'favicon.ico';
+    }
+
+    return public_asset_url('icons/' . $name) . '?v=' . asset_version('icons/' . $name);
+}
+
 function site_logo_light_url()
 {
     return public_asset_url('icons/logo-light.png');
@@ -650,7 +669,7 @@ function post_has_video($post)
 
 function build_page_url($params)
 {
-    return build_query_url('index.php', $params);
+    return feed_url($params);
 }
 
 function build_query_url($base, $params)

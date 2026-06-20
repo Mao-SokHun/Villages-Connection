@@ -58,6 +58,15 @@ foreach ($adminRoutes as $script => $prettyPath) {
     }
 }
 
+$feedParams = route_registry_feed_match($path);
+if ($feedParams !== null) {
+    foreach ($feedParams as $feedKey => $feedValue) {
+        $_GET[$feedKey] = $feedValue;
+    }
+    require $publicRoot . '/index.php';
+    return true;
+}
+
 if (preg_match('#^/post/([^/]+)/?$#', $path, $matches)) {
     $_GET['slug'] = rawurldecode($matches[1]);
     require $publicRoot . '/post.php';

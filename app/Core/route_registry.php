@@ -124,6 +124,45 @@ function route_registry_skip_pretty_prefixes()
     );
 }
 
+/**
+ * Feed pretty paths — mirrored in public/router.php and docker/nginx/snippets/pretty-routes.conf
+ */
+function route_registry_feed_match($path)
+{
+    $path = rtrim((string) $path, '/');
+    if ($path === '') {
+        $path = '/';
+    }
+
+    if ($path === '/popular') {
+        return array('sort' => 'popular');
+    }
+
+    if ($path === '/following') {
+        return array('sort' => 'following');
+    }
+
+    if (preg_match('#^/category/([^/]+)$#', $path, $matches)) {
+        return array('cat' => rawurldecode($matches[1]));
+    }
+
+    if (preg_match('#^/popular/category/([^/]+)$#', $path, $matches)) {
+        return array(
+            'sort' => 'popular',
+            'cat' => rawurldecode($matches[1]),
+        );
+    }
+
+    if (preg_match('#^/following/category/([^/]+)$#', $path, $matches)) {
+        return array(
+            'sort' => 'following',
+            'cat' => rawurldecode($matches[1]),
+        );
+    }
+
+    return null;
+}
+
 function public_pretty_route_map()
 {
     return route_registry_public();

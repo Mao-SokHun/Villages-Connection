@@ -201,7 +201,7 @@ if ($author_bio != '') {
 <nav aria-label="breadcrumb" class="mb-4 reveal">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="<?php echo app_url('index.php'); ?>" class="text-secondary text-decoration-none"><?php echo __('common.home'); ?></a></li>
-        <li class="breadcrumb-item"><a href="index.php?cat=<?php echo urlencode($post['category_slug']); ?>" class="text-secondary text-decoration-none"><?php
+        <li class="breadcrumb-item"><a href="<?php echo feed_url(array('cat' => $post['category_slug'])); ?>" class="text-secondary text-decoration-none"><?php
             if (isset($post['category_name'])) echo htmlspecialchars($post['category_name']);
         ?></a></li>
         <li class="breadcrumb-item active text-white"><?php echo htmlspecialchars(excerpt($post['title'], 40)); ?></li>

@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initReadingProgress();
     initHashScroll();
     initSmoothScroll();
+    initLinkPrefetch();
     initScrollReveal();
     initPostLike();
     initShareButtons();
@@ -792,6 +793,49 @@ function initSmoothScroll() {
                 }
             }
         });
+    }
+}
+
+function initLinkPrefetch() {
+    if (!('fetch' in window)) {
+        return;
+    }
+
+    var prefetched = {};
+    function prefetchUrl(url) {
+        if (!url || prefetched[url]) {
+            return;
+        }
+        if (url.charAt(0) === '#') {
+            return;
+        }
+
+        try {
+            var parsed = new URL(url, window.location.href);
+            if (parsed.origin !== window.location.origin) {
+                return;
+            }
+            prefetched[url] = true;
+            var link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = parsed.pathname + parsed.search;
+            document.head.appendChild(link);
+        } catch (err) {
+            return;
+        }
+    }
+
+    var selectors = 'a.nav-link-custom, a.mobile-tab-item, a.footer-link, a.filter-chip, a.cat-pill, a.dropdown-item-custom';
+    var links = document.querySelectorAll(selectors);
+    for (var i = 0; i < links.length; i++) {
+        (function(anchor) {
+            anchor.addEventListener('mouseenter', function() {
+                prefetchUrl(anchor.href);
+            }, { passive: true });
+            anchor.addEventListener('touchstart', function() {
+                prefetchUrl(anchor.href);
+            }, { passive: true });
+        })(links[i]);
     }
 }
 

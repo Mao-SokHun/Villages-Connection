@@ -1,6 +1,6 @@
 {
-  "name": "Village Connect",
-  "short_name": "Village",
+  "name": "Villages Connection",
+  "short_name": "Villages",
   "description": "Building Stronger Communities Together",
   "start_url": "/",
   "scope": "/",
@@ -10,6 +10,12 @@
   "lang": "en",
   "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
