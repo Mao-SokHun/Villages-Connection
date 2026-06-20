@@ -305,16 +305,18 @@ Project **`villages-connection`** is linked to **`Mao-SokHun/Villages-Connection
 
 Every `git push main` deploys Vercel automatically. Check: https://vercel.com/dashboard → **Deployments**.
 
-Optional backup hook (already created): GitHub secret **`VERCEL_DEPLOY_HOOK`** is set for manual re-deploy.
+After **CI passes**, the same push triggers Render (if `RENDER_DEPLOY_HOOK` secret is set).
 
 ### 3. How it works
 
 ```text
 git push main
-    → GitHub Actions CI (tests)
+    → GitHub Actions CI (tests) — must pass
+    → deploy job → Render (RENDER_DEPLOY_HOOK)
     → Vercel auto-deploy (Git integration)
-    → Render auto-deploy (checksPass) OR RENDER_DEPLOY_HOOK after CI
 ```
+
+If **Deploy** shows **skipped**: CI failed — open the **CI** workflow and fix the error first.
 
 | Check | Where |
 |-------|--------|

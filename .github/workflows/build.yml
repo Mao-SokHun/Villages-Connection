@@ -54,4 +54,21 @@ jobs:
         run: php database/migrate.php
 
       - name: Run PHPUnit
-        run: vendor/bin/phpunit
+        run: php vendor/bin/phpunit
+
+  deploy:
+    name: Deploy to Render
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::notice title=Render hook missing::Add GitHub secret RENDER_DEPLOY_HOOK (Render → villages-connection → Settings → Deploy Hook). Vercel already auto-deploys via Git."
+            exit 0
+          fi
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+          echo "Render deploy triggered."
