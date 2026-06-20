@@ -63,11 +63,12 @@
 html[lang="km"] {
     --font-heading: var(--font-khmer);
     --font-body: var(--font-khmer);
+    font-size: 115%;
 }
 
 html[lang="km"] body {
     letter-spacing: 0;
-    line-height: 1.8;
+    line-height: 1.85;
     text-rendering: optimizeLegibility;
 }
 
@@ -293,7 +294,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .navbar-custom {
     --nav-bar-height: 46px;
-    --nav-bar-gap: 0.625rem;
+    --nav-bar-gap: 0.75rem;
     position: sticky;
     top: 0;
     z-index: 1040;
@@ -673,7 +674,9 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.625rem;
     font-weight: 700;
     line-height: 1;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
+    overflow: hidden;
+    white-space: nowrap;
     color: var(--text-muted);
     text-decoration: none;
     background: transparent;
@@ -700,9 +703,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 .lang-switch-link-km,
 .lang-switch-btn-km {
-    font-family: var(--font-khmer-ui);
-    letter-spacing: 0;
-    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    font-size: 0.625rem;
 }
 .lang-switch-btn--toggle.is-active {
     cursor: pointer;
@@ -3179,6 +3181,9 @@ h1, h2, h3, h4, h5, h6 {
     .nav-search-input {
         font-size: 16px !important;
     }
+    html[lang="km"] .nav-search-input {
+        font-size: 18px !important;
+    }
     .navbar-tools {
         justify-content: center;
         flex-wrap: wrap;
@@ -5371,6 +5376,10 @@ body.has-reading-progress { scroll-padding-top: 92px; }
     .form-select.form-control-custom {
         font-size: 16px !important;
     }
+    html[lang="km"] .form-control-custom,
+    html[lang="km"] .form-select.form-control-custom {
+        font-size: 18px !important;
+    }
     .dash-toolbar-title {
         font-size: 0.95rem;
         line-height: 1.35;
@@ -5914,7 +5923,7 @@ body.has-reading-progress { scroll-padding-top: 92px; }
     }
 
     html[lang="km"] .mobile-tab-label {
-        font-size: 0.58rem;
+        font-size: 0.66rem;
     }
 
     .mobile-tab-item.is-active {
@@ -6136,7 +6145,7 @@ body.has-reading-progress { scroll-padding-top: 92px; }
     }
 
     html[lang="km"] .mobile-tab-label {
-        font-size: 0.52rem;
+        font-size: 0.6rem;
     }
 
     .hero-welcome__greeting {

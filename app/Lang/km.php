@@ -176,7 +176,7 @@ return array(
     'lang.en' => 'English',
     'lang.km' => 'ខ្មែរ',
     'lang.en_short' => 'EN',
-    'lang.km_short' => 'ខ្ម',
+    'lang.km_short' => 'KM',
     'lang.km_toggle' => 'ខ្មែរ',
     'site.name' => 'Villages Connection',
     'site.tagline' => 'កសាងសហគមន៍ឱ្យកាន់តែរឹងមាំ',
