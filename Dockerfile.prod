@@ -1,4 +1,4 @@
-# Production web image — nginx + PHP 8.3-FPM (Koyeb, Render, Fly.io, etc.)
+# Production web image — nginx + PHP 8.3-FPM (Northflank, Render, Fly.io, etc.)
 FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \

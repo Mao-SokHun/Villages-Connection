@@ -165,7 +165,127 @@ docker compose exec -T app vendor/bin/phpunit
 
 ---
 
-## Deploy on Render (free)
+## Deploy on Northflank (recommended)
+
+Stack:
+
+```text
+GitHub → Northflank (Dockerfile.prod) → Supabase or Neon (DB) → Cloudinary (images)
+```
+
+Repo: https://github.com/Mao-SokHun/Villages-Connection
+
+| Item | Value |
+|------|-------|
+| Cost | **$0** (Developer Sandbox) |
+| Database | **Supabase** (you have this) or **Neon** |
+| Images | **Cloudinary** (required — no persistent disk on free tier) |
+| Sleep | **None** — always on (unlike Render free) |
+| Card | Sandbox may require a credit card to activate |
+
+**Do not deploy** `docker-compose.yml` or a `postgres` container. Use external Postgres only.
+
+| File | Northflank |
+|------|------------|
+| `Dockerfile.prod` | ✅ Build this |
+| `docker-compose.yml` | ❌ Local dev only |
+| Root `Dockerfile` | ❌ PHP-FPM only (local compose) |
+
+### Step 1 — Push code to GitHub
+
+```bash
+git add .
+git commit -m "Prepare Northflank deploy"
+git push origin main
+```
+
+*(Skip if `main` is already up to date on GitHub.)*
+
+### Step 2 — Create Northflank project
+
+1. Go to https://app.northflank.com
+2. Sign up → open **Developer Sandbox** (free)
+3. **Create project** (e.g. `villages-connection`)
+4. **Link GitHub** → allow access to **`Mao-SokHun/Villages-Connection`**
+
+### Step 3 — Create service
+
+1. **Add new** → **Combined service** (build + run in one)
+2. **Source:** GitHub → repo **`Villages-Connection`** → branch **`main`**
+3. **Build:**
+   - Method: **Dockerfile**
+   - Dockerfile path: **`Dockerfile.prod`**
+   - Build context: **`/`** (repo root)
+4. **Resources:** Sandbox defaults are fine to start (e.g. 1 vCPU / 1 GB RAM)
+5. **Networking → Ports:**
+   - Port **`8000`**
+   - Protocol: **HTTP**
+   - **Publicly expose** ✅
+   - Northflank auto-detects `EXPOSE 8000` from `Dockerfile.prod` — verify it matches
+6. **Environment variables** — copy from your local `.env` (never commit `.env`):
+
+| Variable | Value |
+|----------|-------|
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `TRUST_PROXY` | `true` |
+| `PRETTY_URLS` | `true` |
+| `APP_URL` | `https://p8000--YOUR-SERVICE--YOUR-PROJECT.code.run` *(set after first deploy — see Step 4)* |
+| `OAUTH_BASE_URL` | same as `APP_URL` |
+| `DB_HOST` | Supabase pooler host |
+| `DB_PORT` | `5432` |
+| `DB_DATABASE` | `postgres` |
+| `DB_USERNAME` | `postgres.xxxxx` |
+| `DB_PASSWORD` | your Supabase password |
+| `DB_SSLMODE` | `require` |
+| `MAIL_HOST` / `MAIL_PORT` / … | your SMTP |
+| `CLOUDINARY_CLOUD_NAME` | from Cloudinary dashboard |
+| `CLOUDINARY_API_KEY` | … |
+| `CLOUDINARY_API_SECRET` | … |
+| `GOOGLE_CLIENT_ID` / `SECRET` | optional OAuth |
+| `FACEBOOK_APP_ID` / `SECRET` | optional OAuth |
+
+**Neon instead of Supabase:** set one variable:
+
+```env
+DATABASE_URL=postgresql://user:password@ep-xxxx.region.aws.neon.tech/neondb?sslmode=require
+```
+
+7. **Create & deploy** — first build takes ~5–10 minutes
+
+Migrations run automatically on container start (`docker/prod/start.sh`).
+
+### Step 4 — After first deploy
+
+1. Open **Ports & DNS** → copy the public URL (e.g. `https://p8000--villages-connection--myproject.code.run`)
+2. **Environment** → set `APP_URL` and `OAUTH_BASE_URL` to that URL → **Save** → redeploy
+3. OAuth redirect URLs (if used):
+   - `https://YOUR-URL/auth/google-callback.php`
+   - `https://YOUR-URL/auth/facebook-callback.php`
+
+### Step 5 — Test
+
+| URL | Expected |
+|-----|----------|
+| `/health.php` | `ok` |
+| `/` | Home feed |
+| `/login.php` | Login page |
+
+Demo login: `admin@admin.com` / `admin123` — **change before public launch**.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Build fails | Check **Build logs** — usually Composer or Dockerfile path wrong |
+| 502 / site down | **Runtime logs** — confirm port **8000** is public HTTP |
+| DB connection error | `DB_SSLMODE=require` for Supabase/Neon; check password |
+| Images missing after restart | Set all `CLOUDINARY_*` vars — local `/uploads/` is ephemeral |
+| Wrong links / OAuth | `APP_URL` must match Northflank public URL exactly |
+
+---
+
+## Deploy on Render (alternative — free, sleeps when idle)
 
 Stack:
 
@@ -173,67 +293,21 @@ Stack:
 GitHub → Render (Dockerfile.prod) → Supabase (DB) → Cloudinary (images)
 ```
 
-Repo: https://github.com/Mao-SokHun/Villages-Connection
-
 | Item | Value |
 |------|-------|
-| Cost | **$0** (Render free web service) |
-| Database | **Supabase** (you already have this) |
-| Images | **Cloudinary** (required — free tier has no persistent disk) |
-| Sleep | After **15 min** idle; first visit ~**30s** (normal on free) |
+| Cost | **$0** |
+| Sleep | After **15 min** idle; first visit ~**30s** |
 
-### Step 1 — Render Blueprint
+### Quick steps
 
-1. Go to https://dashboard.render.com
-2. **New** → **Blueprint**
-3. Connect GitHub → repo **`Mao-SokHun/Villages-Connection`**
-4. Render reads `render.yaml` automatically
-5. When prompted, enter **secret** env vars (from your local `.env`):
+1. https://dashboard.render.com → **New** → **Blueprint**
+2. Repo **`Mao-SokHun/Villages-Connection`** → reads `render.yaml`
+3. Enter the same env vars as Northflank (table above)
+4. After deploy: set `APP_URL` / `OAUTH_BASE_URL` → redeploy
 
-| Variable | Example |
-|----------|---------|
-| `APP_URL` | `https://villages-connection.onrender.com` *(update after first deploy)* |
-| `DB_HOST` | `aws-1-ap-southeast-1.pooler.supabase.com` |
-| `DB_DATABASE` | `postgres` |
-| `DB_USERNAME` | `postgres.xxxxx` |
-| `DB_PASSWORD` | your Supabase password |
-| `MAIL_*` | Gmail SMTP |
-| `CLOUDINARY_*` | your Cloudinary keys |
-| `OAUTH_BASE_URL` | same as `APP_URL` |
-| `GOOGLE_CLIENT_ID` / `SECRET` | ... |
-| `FACEBOOK_APP_ID` / `SECRET` | ... |
+Or **New → Web Service → Docker → `Dockerfile.prod` → Free plan**.
 
-6. Click **Apply** / **Deploy Blueprint**
-
-### Step 2 — After deploy
-
-1. Copy your Render URL (e.g. `https://villages-connection-xxxx.onrender.com`)
-2. **Environment** → set `APP_URL` and `OAUTH_BASE_URL` to that URL → **Save & redeploy**
-3. Update **Google / Facebook** OAuth redirect URLs:
-   - `https://YOUR-APP.onrender.com/auth/google-callback.php`
-   - `https://YOUR-APP.onrender.com/auth/facebook-callback.php`
-
-### Step 3 — Test
-
-- Health: `https://YOUR-APP.onrender.com/health.php` → `ok`
-- Home: `https://YOUR-APP.onrender.com`
-- Login: `admin@admin.com` / `admin123` *(change before public launch)*
-
-Migrations run automatically when the container starts.
-
-### Manual deploy (without Blueprint)
-
-1. **New** → **Web Service** → connect GitHub
-2. **Runtime:** Docker
-3. **Dockerfile path:** `Dockerfile.prod`
-4. **Plan:** Free
-5. Add the same env vars as above
-
-### Free tier notes
-
-- Service **sleeps** after 15 minutes — wait ~30s on first load after idle
-- **No disk** for uploads — use **Cloudinary** for images
-- Upgrade to **Starter ($7/mo)** later if you want no sleep
+See `render.yaml` for Blueprint defaults. **No persistent disk** on free — Cloudinary required.
 
 ---
 
