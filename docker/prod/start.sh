@@ -3,9 +3,12 @@ set -euo pipefail
 
 PORT="${PORT:-8000}"
 
-rm -f /etc/nginx/sites-enabled/default
+# Strip Debian "Welcome to nginx" site — only serve our PHP app.
+rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
+rm -f /etc/nginx/conf.d/default.conf
+find /etc/nginx/sites-enabled -mindepth 1 -delete 2>/dev/null || true
 
-sed "s/__PORT__/${PORT}/g" /etc/nginx/templates/default.conf > /etc/nginx/conf.d/default.conf
+sed "s/__PORT__/${PORT}/g" /etc/nginx/templates/app.conf > /etc/nginx/conf.d/00-villages.conf
 nginx -t
 
 mkdir -p \
