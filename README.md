@@ -285,6 +285,47 @@ Demo login: `admin@admin.com` / `admin123` — **change before public launch**.
 
 ---
 
+## Auto deploy (Render + Vercel)
+
+Push to **`main`** should deploy **both** hosts. One-time setup:
+
+### 1. Render (Blueprint — recommended)
+
+1. https://dashboard.render.com → **New** → **Blueprint**
+2. Connect GitHub → repo **`Mao-SokHun/Villages-Connection`**
+3. Render reads **`render.yaml`** (`branch: main`, `autoDeployTrigger: checksPass`)
+4. Enter secret env vars when prompted → **Apply**
+5. **Settings → Build & Deploy** → confirm **Auto-Deploy** = **After CI checks pass** (or **On commit**)
+
+**Deploy hook (backup):** Service → **Settings** → **Deploy Hook** → copy URL → GitHub repo → **Settings → Secrets → Actions** → add `RENDER_DEPLOY_HOOK`.
+
+### 2. Vercel (GitHub — already connected)
+
+Project **`villages-connection`** is linked to **`Mao-SokHun/Villages-Connection`** on branch **`main`**.
+
+Every `git push main` deploys Vercel automatically. Check: https://vercel.com/dashboard → **Deployments**.
+
+Optional backup hook (already created): GitHub secret **`VERCEL_DEPLOY_HOOK`** is set for manual re-deploy.
+
+### 3. How it works
+
+```text
+git push main
+    → GitHub Actions CI (tests)
+    → Vercel auto-deploy (Git integration)
+    → Render auto-deploy (checksPass) OR RENDER_DEPLOY_HOOK after CI
+```
+
+| Check | Where |
+|-------|--------|
+| CI passed | https://github.com/Mao-SokHun/Villages-Connection/actions |
+| Render deploy | Render dashboard → **Events** |
+| Vercel deploy | Vercel dashboard → **Deployments** |
+
+If Render never deploys: Blueprint not applied yet, or **Auto-Deploy** is off, or CI failed.
+
+---
+
 ## Deploy on Render (free — no credit card)
 
 Stack:

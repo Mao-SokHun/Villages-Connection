@@ -2,13 +2,16 @@
 # Dashboard: New → Blueprint → connect GitHub repo
 # Docs: https://render.com/docs/blueprint-spec
 #
-# Database: use Supabase (free) — enter DB_* secrets when Blueprint prompts.
-# Uploads: use Cloudinary (free tier has no persistent disk).
+# Auto-deploy: push to `main` after GitHub CI passes (see .github/workflows/build.yml).
+# Also triggers via deploy hook in .github/workflows/deploy.yml (optional backup).
 
 services:
   - type: web
     name: villages-connection
     runtime: docker
+    repo: https://github.com/Mao-SokHun/Villages-Connection
+    branch: main
+    autoDeployTrigger: checksPass
     dockerfilePath: ./Dockerfile.prod
     plan: free
     region: singapore
