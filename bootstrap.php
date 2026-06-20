@@ -16,7 +16,12 @@ init_locale();
 ensure_admin_tables_loaded($pdo);
 archive_expired_posts($pdo);
 
-if (isLoggedIn()) {
+$current_script = '';
+if (isset($_SERVER['SCRIPT_NAME'])) {
+    $current_script = basename(str_replace('\\', '/', $_SERVER['SCRIPT_NAME']));
+}
+
+if (isLoggedIn() && $current_script !== 'set-language.php') {
     ensure_active_authenticated_user($pdo);
 }
 

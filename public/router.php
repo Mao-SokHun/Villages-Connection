@@ -30,6 +30,10 @@ if ($path !== '/') {
 
     $candidate = $publicRoot . $path;
     if (is_file($candidate)) {
+        if (preg_match('/\.php$/i', $path) && (getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false)) {
+            require $candidate;
+            return true;
+        }
         return false;
     }
 }

@@ -285,7 +285,7 @@ Demo login: `admin@admin.com` / `admin123` — **change before public launch**.
 
 ---
 
-## Deploy on Render (alternative — free, sleeps when idle)
+## Deploy on Render (free — no credit card)
 
 Stack:
 
@@ -293,21 +293,72 @@ Stack:
 GitHub → Render (Dockerfile.prod) → Supabase (DB) → Cloudinary (images)
 ```
 
+Repo: https://github.com/Mao-SokHun/Villages-Connection
+
 | Item | Value |
 |------|-------|
-| Cost | **$0** |
+| Cost | **$0** (free web service) |
+| Card | **Not required** |
 | Sleep | After **15 min** idle; first visit ~**30s** |
+| Port | Render sets `PORT=10000` — `start.sh` reads it automatically |
+| Region | `singapore` *(in `render.yaml`)* |
 
-### Quick steps
+### Step 1 — Blueprint deploy
 
 1. https://dashboard.render.com → **New** → **Blueprint**
-2. Repo **`Mao-SokHun/Villages-Connection`** → reads `render.yaml`
-3. Enter the same env vars as Northflank (table above)
-4. After deploy: set `APP_URL` / `OAUTH_BASE_URL` → redeploy
+2. Connect GitHub → repo **`Mao-SokHun/Villages-Connection`**
+3. Render reads **`render.yaml`** automatically
+4. When prompted, enter **secret** values *(from your local `.env`)*:
 
-Or **New → Web Service → Docker → `Dockerfile.prod` → Free plan**.
+| Variable | Value |
+|----------|-------|
+| `APP_URL` | `https://villages-connection.onrender.com` *(update after first deploy)* |
+| `OAUTH_BASE_URL` | same as `APP_URL` |
+| `DB_HOST` | `aws-1-ap-southeast-1.pooler.supabase.com` |
+| `DB_DATABASE` | `postgres` |
+| `DB_USERNAME` | `postgres.mnwjhmnvsnjafbkoucyp` |
+| `DB_PASSWORD` | your Supabase password |
+| `MAIL_HOST` | `smtp.gmail.com` |
+| `MAIL_PORT` | `587` |
+| `MAIL_ENCRYPTION` | `tls` |
+| `MAIL_USERNAME` | your Gmail |
+| `MAIL_PASSWORD` | Gmail app password |
+| `MAIL_FROM` | your Gmail |
+| `SITE_CONTACT_EMAIL` | your Gmail |
+| `CLOUDINARY_URL` | from Cloudinary dashboard |
+| `CLOUDINARY_CLOUD_NAME` | … |
+| `CLOUDINARY_API_KEY` | … |
+| `CLOUDINARY_API_SECRET` | … |
+| `GOOGLE_CLIENT_ID` / `SECRET` | optional |
+| `FACEBOOK_APP_ID` / `SECRET` | optional |
 
-See `render.yaml` for Blueprint defaults. **No persistent disk** on free — Cloudinary required.
+5. Click **Apply** / **Deploy Blueprint**
+
+**Or manual:** **New → Web Service → Docker → `Dockerfile.prod` → Free → Singapore**
+
+### Step 2 — After deploy
+
+1. Copy Render URL (e.g. `https://villages-connection.onrender.com`)
+2. **Environment** → set `APP_URL` + `OAUTH_BASE_URL` → **Save & redeploy**
+3. OAuth redirect URLs:
+   - `https://YOUR-APP.onrender.com/auth/google-callback.php`
+   - `https://YOUR-APP.onrender.com/auth/facebook-callback.php`
+
+### Step 3 — Test
+
+| URL | Expected |
+|-----|----------|
+| `/health.php` | `ok` |
+| `/` | Home feed |
+| `/login.php` | Login |
+
+Migrations run automatically on container start (`docker/prod/start.sh`).
+
+### Free tier notes
+
+- **Sleeps** after 15 min idle — wait ~30s on first load
+- **No disk** for uploads — **Cloudinary required**
+- Can run **alongside Vercel** — same Supabase + Cloudinary
 
 ---
 
@@ -322,24 +373,130 @@ See `scripts/oracle-deploy.sh` and `docker-compose.prod.yml` if you move off Ren
 
 ---
 
-## Vercel (serverless PHP)
+## Deploy on Vercel (free — no credit card)
 
-This project can deploy to [Vercel](https://vercel.com) using the community [`vercel-php`](https://github.com/vercel-community/php) runtime.
+Stack:
 
-1. Push the repo to GitHub and import it in Vercel.
-2. Framework preset: **Other**
-3. Add environment variables from `.env.example` (Supabase `DB_*`, `MAIL_*`, `APP_URL`, `CLOUDINARY_*`, OAuth keys, etc.)
-4. Set `APP_URL=https://your-project.vercel.app` (or your custom domain)
-5. Set `TRUST_PROXY=true`
-6. Deploy
+```text
+GitHub → Vercel (vercel-php) → Supabase (DB) → Cloudinary (images)
+```
+
+Repo: https://github.com/Mao-SokHun/Villages-Connection
+
+| Item | Value |
+|------|-------|
+| Cost | **$0** (Hobby) |
+| Card | **Not required** |
+| Sleep | Serverless — cold start ~1–3s after idle |
+| DB | Supabase (external) |
+| Images | **Cloudinary required** |
+
+### Step 1 — Import project
+
+1. https://vercel.com → Sign up / Log in (GitHub)
+2. **Add New** → **Project**
+3. Import **`Mao-SokHun/Villages-Connection`**
+4. **Framework Preset:** **Other**
+5. **Root Directory:** `./` (default)
+6. **Build Command:** leave empty *(uses `installCommand` in `vercel.json`)*
+7. **Output Directory:** leave empty
+
+### Step 2 — Environment variables
+
+**Settings → Environment Variables** — add for **Production** (and Preview if you want):
+
+```env
+APP_NAME=CMS
+APP_URL=https://YOUR-PROJECT.vercel.app
+APP_ENV=production
+APP_DEBUG=false
+APP_TIMEZONE=Asia/Phnom_Penh
+TRUST_PROXY=true
+PRETTY_URLS=true
+DB_PERSISTENT=false
+
+DB_HOST=aws-1-ap-southeast-1.pooler.supabase.com
+DB_PORT=5432
+DB_DATABASE=postgres
+DB_USERNAME=postgres.xxxxx
+DB_PASSWORD=...
+DB_SSLMODE=require
+
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_ENCRYPTION=tls
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_FROM=...
+MAIL_FROM_NAME=Village Connect
+SITE_CONTACT_EMAIL=...
+
+OAUTH_BASE_URL=https://YOUR-PROJECT.vercel.app
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+FACEBOOK_APP_ID=...
+FACEBOOK_APP_SECRET=...
+
+CLOUDINARY_URL=cloudinary://...
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+CLOUDINARY_FOLDER=village-connect
+```
+
+Skip `GOOGLE_REDIRECT_URI` / `FACEBOOK_REDIRECT_URI` — app builds them from `OAUTH_BASE_URL`.
+
+**Node.js Version:** set **22.x** in Project Settings *(helps `pdo_pgsql` load)*.
+
+### Step 3 — Deploy
+
+Click **Deploy** → wait ~2–5 minutes.
+
+### Step 4 — After deploy
+
+1. Copy URL: `https://villages-connection-xxxx.vercel.app`
+2. Update `APP_URL` + `OAUTH_BASE_URL` → **Redeploy**
+3. OAuth redirect URLs:
+   - `https://YOUR-APP.vercel.app/auth/google-callback.php`
+   - `https://YOUR-APP.vercel.app/auth/facebook-callback.php`
+
+### Step 5 — Database migrations
+
+Vercel does **not** run migrations automatically. From your PC *(with PHP)*:
+
+```bash
+# .env already points at Supabase
+php database/migrate.php
+php database/migrate_user_preferences.php
+php database/migrate_incident_reports.php
+php database/migrate_phase25.php
+```
+
+Or use Docker: `docker compose run --rm app php database/migrate.php`
+
+### Step 6 — Test
+
+| URL | Expected |
+|-----|----------|
+| `/health.php` | `ok` |
+| `/` | Home feed |
+| `/login.php` | Login |
+
+### Vercel limits
+
+- No local `/uploads/` persistence → **Cloudinary required**
+- No `ffmpeg` in serverless → video processing limited
+- Sessions may reset on cold starts
+- Admin DB backup download may not work on serverless
+- Max upload ~64MB (`api/php.ini`)
+
+### CLI deploy (optional)
 
 ```bash
 npm i -g vercel
 vercel login
-vercel
+vercel --prod
 ```
-
-**Limits on Vercel:** no persistent local uploads (use Cloudinary), no `ffmpeg` video processing, admin DB backups may fail, sessions can reset on cold starts. Supabase as external Postgres works well.
 
 ---
 

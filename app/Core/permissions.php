@@ -51,11 +51,22 @@ function ensure_active_authenticated_user($pdo)
     }
 
     $user = authenticated_user_from_db($pdo);
-    if (!$user || user_is_deleted($user)) {
+    if ($user && user_is_deleted($user)) {
         logout_closed_account();
     }
-    if (user_is_banned($user)) {
+    if ($user && user_is_banned($user)) {
         logout_banned_account();
+    }
+    if (!$user) {
+        return array(
+            'id' => (int) $_SESSION['user_id'],
+            'name' => isset($_SESSION['user_name']) ? $_SESSION['user_name'] : '',
+            'email' => isset($_SESSION['user_email']) ? $_SESSION['user_email'] : '',
+            'role' => isset($_SESSION['user_role']) ? $_SESSION['user_role'] : '',
+            'avatar' => isset($_SESSION['user_avatar']) ? $_SESSION['user_avatar'] : '',
+            'account_status' => isset($_SESSION['account_status']) ? $_SESSION['account_status'] : 'active',
+            'is_banned' => !empty($_SESSION['is_banned']),
+        );
     }
 
     apply_user_to_session($user);

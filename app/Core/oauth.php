@@ -2,11 +2,20 @@
 
 function oauth_setting($key, $default)
 {
-    $value = getenv($key);
-    if ($value == false || trim($value) == '') {
+    if (function_exists('env_var')) {
+        $value = env_var($key, '');
+    } else {
+        $value = getenv($key);
+        if ($value === false) {
+            $value = '';
+        }
+        $value = preg_replace('/^\xEF\xBB\xBF/', '', (string) $value);
+        $value = trim($value);
+    }
+    if ($value == '') {
         return $default;
     }
-    return trim($value);
+    return $value;
 }
 
 function oauth_base_url()
@@ -122,6 +131,12 @@ function oauth_parse_api_error($response)
         return 'Unexpected provider response.';
     }
 
+    if (isset($data['error_description']) && $data['error_description'] != '') {
+        return $data['error_description'];
+    }
+    if (isset($data['error']) && is_string($data['error']) && $data['error'] != '') {
+        return $data['error'];
+    }
     if (isset($data['error']['message'])) {
         return $data['error']['message'];
     }

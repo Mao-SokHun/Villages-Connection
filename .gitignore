@@ -12,3 +12,5 @@ public/uploads/videos/*
 composer.phar
 composer-setup.php
 .phpunit.cache/
+
+.vercel

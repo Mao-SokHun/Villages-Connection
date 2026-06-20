@@ -5,23 +5,29 @@ function supported_locales()
     return array('en', 'km');
 }
 
-function init_locale()
+function set_user_locale($locale)
 {
-    if (isset($_GET['lang'])) {
-        $lang = trim($_GET['lang']);
-        if (in_array($lang, supported_locales(), true)) {
-            $_SESSION['locale'] = $lang;
-            $secure = function_exists('request_is_https') ? request_is_https() : false;
-            setcookie('vc_locale', $lang, array(
-                'expires' => time() + (86400 * 365),
-                'path' => '/',
-                'secure' => $secure,
-                'httponly' => true,
-                'samesite' => 'Lax',
-            ));
-        }
+    $locale = trim((string) $locale);
+    if (!in_array($locale, supported_locales(), true)) {
+        $locale = 'en';
     }
 
+    $_SESSION['locale'] = $locale;
+
+    $secure = function_exists('request_is_https') ? request_is_https() : false;
+    setcookie('vc_locale', $locale, array(
+        'expires' => time() + (86400 * 365),
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ));
+
+    return $locale;
+}
+
+function init_locale()
+{
     if (!isset($_SESSION['locale']) || $_SESSION['locale'] == '') {
         if (isset($_COOKIE['vc_locale']) && in_array($_COOKIE['vc_locale'], supported_locales(), true)) {
             $_SESSION['locale'] = $_COOKIE['vc_locale'];
@@ -63,7 +69,12 @@ function language_switch_redirect_path()
     $path = request_uri_path();
     $query = '';
     if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
-        $query = '?' . $_SERVER['QUERY_STRING'];
+        $params = array();
+        parse_str($_SERVER['QUERY_STRING'], $params);
+        unset($params['lang'], $params['redirect']);
+        if (!empty($params)) {
+            $query = '?' . http_build_query($params);
+        }
     }
 
     foreach (route_registry_public() as $script => $pretty) {
@@ -114,7 +125,17 @@ function language_switch_url($locale)
     }
 
     $redirect = language_switch_redirect_path();
-    return app_url('set-language.php') . '?lang=' . urlencode($locale) . '&redirect=' . urlencode($redirect);
+
+    return app_url('set-language.php')
+        . '?lang=' . urlencode($locale)
+        . '&redirect=' . urlencode($redirect);
+}
+
+function language_toggle_url()
+{
+    $next = current_locale() === 'en' ? 'km' : 'en';
+
+    return language_switch_url($next);
 }
 
 function load_translations($locale)

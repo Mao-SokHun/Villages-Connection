@@ -99,7 +99,7 @@ if (!isset($canonical_url) || $canonical_url == '') {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Estonia&family=Fredoka:wght@600;700&family=Inter:opsz,wght@14..32,400..700&family=Noto+Sans+Khmer:wght@400;500;600;700&family=Noto+Sans+Khmer+UI:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Estonia&family=Fredoka:wght@600;700&family=Inter:opsz,wght@14..32,400..700&family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="<?php echo public_asset_url('css/style.css'); ?>?v=<?php echo asset_version('css/style.css'); ?>" rel="stylesheet">
@@ -261,17 +261,15 @@ if (!isset($canonical_url) || $canonical_url == '') {
             <div class="navbar-actions">
                 <form action="<?php echo app_url('search.php'); ?>" method="GET" class="nav-search-form">
                     <div class="nav-search-wrap">
-                        <i class="fa-solid fa-search nav-search-icon"></i>
+                        <i class="fa-solid fa-magnifying-glass nav-search-icon"></i>
                         <input type="text" name="q" class="nav-search-input" placeholder="<?php echo htmlspecialchars(__('nav.search')); ?>" value="<?php echo htmlspecialchars($nav_search); ?>">
                     </div>
                 </form>
 
                 <div class="navbar-tools">
-                    <div class="lang-switch" role="group" aria-label="<?php echo htmlspecialchars(__('common.language')); ?>">
-                        <a href="<?php echo htmlspecialchars(language_switch_url('en')); ?>" class="lang-switch-link <?php if (current_locale() === 'en') echo 'is-active'; ?>" <?php if (current_locale() === 'en') echo 'aria-current="true"'; ?> title="<?php echo htmlspecialchars(__('lang.en')); ?>" aria-label="<?php echo htmlspecialchars(__('lang.en')); ?>"><?php echo htmlspecialchars(__('lang.en_short')); ?></a>
-                        <span class="lang-switch-sep" aria-hidden="true">|</span>
-                        <a href="<?php echo htmlspecialchars(language_switch_url('km')); ?>" class="lang-switch-link lang-switch-link-km <?php if (current_locale() === 'km') echo 'is-active'; ?>" <?php if (current_locale() === 'km') echo 'aria-current="true"'; ?> title="<?php echo htmlspecialchars(__('lang.km')); ?>" aria-label="<?php echo htmlspecialchars(__('lang.km')); ?>"><?php echo htmlspecialchars(__('lang.km_toggle')); ?></a>
-                    </div>
+                    <a href="<?php echo htmlspecialchars(language_toggle_url()); ?>" class="lang-switch-btn lang-switch-btn--toggle <?php echo current_locale() === 'km' ? 'lang-switch-btn-km' : ''; ?> is-active" title="<?php echo htmlspecialchars(current_locale() === 'km' ? __('lang.km') : __('lang.en')); ?>" aria-label="<?php echo htmlspecialchars(__('common.language')); ?>">
+                        <?php echo htmlspecialchars(current_locale() === 'km' ? __('lang.km_short') : __('lang.en_short')); ?>
+                    </a>
                     <button type="button" id="theme-toggle" class="nav-tool-btn theme-toggle-btn" aria-label="<?php echo htmlspecialchars(__('common.theme')); ?>" title="<?php echo htmlspecialchars(__('common.theme')); ?>">
                         <i class="fa-solid fa-moon theme-icon-dark"></i>
                         <i class="fa-solid fa-sun theme-icon-light"></i>

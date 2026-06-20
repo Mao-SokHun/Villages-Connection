@@ -27,6 +27,18 @@ function loadEnv($path)
     return true;
 }
 
+function env_var($key, $default = '')
+{
+    $value = getenv($key);
+    if ($value === false || $value === '') {
+        return $default;
+    }
+    $value = (string) $value;
+    $value = preg_replace('/^\xEF\xBB\xBF/', '', $value);
+
+    return trim($value);
+}
+
 function apply_database_url_from_env()
 {
     $url = getenv('DATABASE_URL');
@@ -114,42 +126,26 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-$db_host = getenv('DB_HOST');
-if ($db_host == false || $db_host == '') {
-    $db_host = '127.0.0.1';
-}
+$db_host = env_var('DB_HOST', '127.0.0.1');
 define('DB_HOST', $db_host);
 
-$db_port = getenv('DB_PORT');
-if ($db_port == false || $db_port == '') {
-    $db_port = '5432';
-}
+$db_port = env_var('DB_PORT', '5432');
 define('DB_PORT', $db_port);
 
-$db_name = getenv('DB_DATABASE');
-if ($db_name == false || $db_name == '') {
-    $db_name = 'project_cms';
-}
+$db_name = env_var('DB_DATABASE', 'project_cms');
 define('DB_NAME', $db_name);
 
-$db_user = getenv('DB_USERNAME');
-if ($db_user == false || $db_user == '') {
-    $db_user = 'postgres';
-}
+$db_user = env_var('DB_USERNAME', 'postgres');
 define('DB_USER', $db_user);
 
-$db_pass = getenv('DB_PASSWORD');
-if ($db_pass == false || $db_pass == '') {
+$db_pass = env_var('DB_PASSWORD');
+if ($db_pass == '') {
     http_response_code(500);
     exit('Database configuration error: DB_PASSWORD is not set. Configure it in your .env file.');
 }
 define('DB_PASS', $db_pass);
 
-$db_sslmode = getenv('DB_SSLMODE');
-if ($db_sslmode == false) {
-    $db_sslmode = '';
-}
-define('DB_SSLMODE', $db_sslmode);
+define('DB_SSLMODE', env_var('DB_SSLMODE'));
 
 define('SITE_NAME', 'Villages Connection');
 define('SITE_TAGLINE', 'Building Stronger Communities Together');
@@ -164,16 +160,10 @@ if ($site_contact == false || $site_contact == '') {
 }
 define('SITE_CONTACT_EMAIL', $site_contact);
 
-$app_url = getenv('APP_URL');
-if ($app_url == false || $app_url == '') {
-    $app_url = '';
-}
+$app_url = env_var('APP_URL');
 define('APP_URL', $app_url);
 
-$app_env = getenv('APP_ENV');
-if ($app_env == false || $app_env == '') {
-    $app_env = 'local';
-}
+$app_env = env_var('APP_ENV', 'local');
 define('APP_ENV', $app_env);
 
 $app_debug = getenv('APP_DEBUG');
