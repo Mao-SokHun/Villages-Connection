@@ -13,7 +13,8 @@ try {
     );
     $persistent = getenv('DB_PERSISTENT');
     $is_local_db = in_array(DB_HOST, array('db', '127.0.0.1', 'localhost'), true);
-    if ($persistent === 'true' || $persistent === '1' || ($persistent !== 'false' && !$is_local_db)) {
+    $is_serverless = getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false;
+    if (!$is_serverless && ($persistent === 'true' || $persistent === '1' || ($persistent !== 'false' && !$is_local_db))) {
         $options[PDO::ATTR_PERSISTENT] = true;
     }
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);

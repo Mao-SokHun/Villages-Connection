@@ -134,41 +134,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
         $location = trim($_POST['location']);
     }
 
-    $latitude = '';
-    if (isset($_POST['latitude'])) {
-        $latitude = trim($_POST['latitude']);
-    }
-
-    $longitude = '';
-    if (isset($_POST['longitude'])) {
-        $longitude = trim($_POST['longitude']);
-    }
-
-    $expires_at_input = '';
-    if (isset($_POST['expires_at'])) {
-        $expires_at_input = trim($_POST['expires_at']);
-    }
-
-    $archive_on_expiry = 0;
-    if (isset($_POST['archive_on_expiry'])) {
-        $archive_on_expiry = 1;
-    }
-
-    $post_kind = 'general';
-    if (isset($_POST['post_kind'])) {
-        $post_kind = trim($_POST['post_kind']);
-    }
-
-    $knowledge_label = '';
-    if (isset($_POST['knowledge_label'])) {
-        $knowledge_label = trim($_POST['knowledge_label']);
-    }
-
-    $challenge_id = 0;
-    if (isset($_POST['challenge_id'])) {
-        $challenge_id = (int) $_POST['challenge_id'];
-    }
-
     $is_featured = 0;
     if (isAdmin() && isset($_POST['is_featured'])) {
         $is_featured = 1;
@@ -218,39 +183,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
     }
     if ($content == '') {
         $errors[] = 'Content is required';
-    }
-    if ($latitude !== '' && !is_numeric($latitude)) {
-        $errors[] = 'Latitude must be a valid number.';
-    }
-    if ($longitude !== '' && !is_numeric($longitude)) {
-        $errors[] = 'Longitude must be a valid number.';
-    }
-    $allowed_post_kinds = array('general', 'knowledge', 'event', 'alert');
-    if (!in_array($post_kind, $allowed_post_kinds, true)) {
-        $post_kind = 'general';
-    }
-    $allowed_knowledge_labels = array('', 'solved', 'useful', 'tutorial', 'verified');
-    if (!in_array($knowledge_label, $allowed_knowledge_labels, true)) {
-        $knowledge_label = '';
-    }
-    if ($post_kind != 'knowledge') {
-        $knowledge_label = '';
-    }
-    if ($challenge_id > 0) {
-        $challenge_check = $pdo->prepare('SELECT id FROM community_challenges WHERE id = :id LIMIT 1');
-        $challenge_check->execute(array('id' => $challenge_id));
-        if (!$challenge_check->fetch()) {
-            $challenge_id = 0;
-        }
-    }
-    $expires_at = null;
-    if ($expires_at_input != '') {
-        $expires_ts = strtotime($expires_at_input);
-        if ($expires_ts == false) {
-            $errors[] = 'Expiry date/time is not valid.';
-        } else {
-            $expires_at = date('Y-m-d H:i:s', $expires_ts);
-        }
     }
     if (isAdmin()) {
         if ($status != 'Draft' && $status != 'Published' && $status != 'Pending' && $status != 'Rejected' && $status != 'Deleted') {
@@ -328,13 +260,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
             'video_url' => $video_url,
             'video_type' => $vid_type,
             'location' => $location,
-            'latitude' => $latitude !== '' ? $latitude : null,
-            'longitude' => $longitude !== '' ? $longitude : null,
-            'expires_at' => $expires_at,
-            'archive_on_expiry' => $archive_on_expiry ? true : false,
-            'post_kind' => $post_kind,
-            'knowledge_label' => $knowledge_label,
-            'challenge_id' => $challenge_id > 0 ? $challenge_id : null,
+            'latitude' => null,
+            'longitude' => null,
+            'expires_at' => null,
+            'archive_on_expiry' => false,
+            'post_kind' => 'general',
+            'knowledge_label' => '',
+            'challenge_id' => null,
             'is_featured' => $is_featured,
             'status' => $status,
         );
@@ -365,7 +297,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
                 } elseif ($fields['status'] == 'Pending') {
                     notify_admins_pending_post($pdo, $new_post_id);
                 }
-                setFlashMessage('success', $status == 'Pending' ? 'Post submitted for admin approval.' : 'Post created successfully');
+                if ($fields['status'] == 'Draft') {
+                    setFlashMessage('info', 'Post saved as Draft — it will not appear on the home feed until you publish it.');
+                } elseif ($fields['status'] == 'Pending') {
+                    setFlashMessage('info', 'Post submitted for admin approval — it will appear on the home feed after approval.');
+                } else {
+                    setFlashMessage('success', 'Post published — it is now visible on the home feed.');
+                }
             } elseif ($db_action == 'edit' && $id > 0) {
                 $check = $pdo->prepare('SELECT * FROM posts WHERE id = :id');
                 $check->execute(array('id' => $id));
@@ -386,6 +324,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
 
                 $update_fields = $fields;
                 unset($update_fields['user_id']);
+                $update_fields['latitude'] = $existing_post['latitude'];
+                $update_fields['longitude'] = $existing_post['longitude'];
+                $update_fields['expires_at'] = $existing_post['expires_at'];
+                $update_fields['archive_on_expiry'] = !empty($existing_post['archive_on_expiry']);
+                $update_fields['post_kind'] = isset($existing_post['post_kind']) ? $existing_post['post_kind'] : 'general';
+                $update_fields['knowledge_label'] = isset($existing_post['knowledge_label']) ? $existing_post['knowledge_label'] : '';
+                $update_fields['challenge_id'] = isset($existing_post['challenge_id']) ? $existing_post['challenge_id'] : null;
 
                 $sql = 'UPDATE posts SET category_id=:category_id, title=:title, slug=:slug, summary=:summary, content=:content,
                         image_url=:image_url, image_alt=:image_alt, video_url=:video_url, video_type=:video_type, location=:location,
@@ -424,12 +369,6 @@ if ($action == 'edit' && $id > 0) {
 }
 
 $all_categories = $pdo->query('SELECT id, name, icon FROM categories ORDER BY name')->fetchAll();
-$active_challenges = array();
-try {
-    $active_challenges = $pdo->query("SELECT id, title, status FROM community_challenges ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'draft' THEN 1 ELSE 2 END, title ASC")->fetchAll();
-} catch (PDOException $e) {
-    $active_challenges = array();
-}
 $page_title = 'Manage Posts';
 $admin_active = 'posts';
 require_once ROOT_PATH . '/app/Views/layouts/header.php';
@@ -512,8 +451,14 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                     <div class="col-md-3">
                         <label class="form-label form-label-custom">Status</label>
                         <select name="status" class="form-select form-control-custom">
-                            <option value="Draft" <?php if ($post && isset($post['status']) && $post['status'] == 'Draft') echo 'selected'; ?>>Draft</option>
-                            <option value="Published" <?php if ($post && isset($post['status']) && $post['status'] == 'Published') echo 'selected'; ?>>Published</option>
+                            <?php
+                            $default_status = 'Published';
+                            if ($post && isset($post['status'])) {
+                                $default_status = $post['status'];
+                            }
+                            ?>
+                            <option value="Draft" <?php if ($default_status == 'Draft') echo 'selected'; ?>>Draft</option>
+                            <option value="Published" <?php if ($default_status == 'Published') echo 'selected'; ?>>Published</option>
                             <?php if (isAdmin()): ?>
                             <option value="Pending" <?php if ($post && isset($post['status']) && $post['status'] == 'Pending') echo 'selected'; ?>>Pending</option>
                             <option value="Rejected" <?php if ($post && isset($post['status']) && $post['status'] == 'Rejected') echo 'selected'; ?>>Rejected</option>
@@ -523,6 +468,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                             <option value="Rejected" selected>Rejected</option>
                             <?php endif; ?>
                         </select>
+                        <p class="text-secondary small mb-0 mt-1"><i class="fa-solid fa-circle-info"></i> Only <strong>Published</strong> posts appear on the home feed. Draft and pending posts show in <?php echo isAdmin() ? 'Posts' : 'My Posts'; ?> only.</p>
                     </div>
                     <?php if (isAdmin()): ?>
                     <div class="col-md-3 d-flex align-items-end">
@@ -532,78 +478,6 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                         </div>
                     </div>
                     <?php endif; ?>
-                    <div class="col-12">
-                        <div class="glass-panel-sm p-3 border border-secondary border-opacity-25">
-                            <h6 class="text-white mb-3"><i class="fa-solid fa-sliders text-warning me-2"></i>Advanced Options</h6>
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label form-label-custom">Post Type</label>
-                                    <select name="post_kind" id="post_kind" class="form-select form-control-custom">
-                                        <?php
-                                        $current_kind = ($post && isset($post['post_kind'])) ? $post['post_kind'] : 'general';
-                                        $post_kind_options = array(
-                                            'general' => 'General',
-                                            'knowledge' => 'Knowledge / Tips',
-                                            'event' => 'Event',
-                                            'alert' => 'Alert',
-                                        );
-                                        foreach ($post_kind_options as $kind_value => $kind_label):
-                                        ?>
-                                        <option value="<?php echo htmlspecialchars($kind_value); ?>" <?php if ($current_kind === $kind_value) echo 'selected'; ?>><?php echo htmlspecialchars($kind_label); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-4" id="knowledge_label_wrap">
-                                    <label class="form-label form-label-custom">Knowledge Label</label>
-                                    <select name="knowledge_label" class="form-select form-control-custom">
-                                        <?php
-                                        $current_label = ($post && isset($post['knowledge_label'])) ? $post['knowledge_label'] : '';
-                                        $label_options = array('' => 'None', 'solved' => 'Solved', 'useful' => 'Useful', 'tutorial' => 'Tutorial', 'verified' => 'Verified');
-                                        foreach ($label_options as $label_value => $label_text):
-                                        ?>
-                                        <option value="<?php echo htmlspecialchars($label_value); ?>" <?php if ($current_label === $label_value) echo 'selected'; ?>><?php echo htmlspecialchars($label_text); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label form-label-custom">Community Challenge</label>
-                                    <select name="challenge_id" class="form-select form-control-custom">
-                                        <option value="0">— None —</option>
-                                        <?php foreach ($active_challenges as $challenge): ?>
-                                        <option value="<?php echo (int) $challenge['id']; ?>" <?php if ($post && (int) $post['challenge_id'] === (int) $challenge['id']) echo 'selected'; ?>>
-                                            <?php echo htmlspecialchars($challenge['title']); ?><?php if ($challenge['status'] != 'active') echo ' (' . htmlspecialchars($challenge['status']) . ')'; ?>
-                                        </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label form-label-custom">Latitude</label>
-                                    <input type="text" name="latitude" class="form-control form-control-custom" placeholder="11.5564" value="<?php if ($post && isset($post['latitude']) && $post['latitude'] !== null && $post['latitude'] !== '') echo htmlspecialchars($post['latitude']); ?>">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label form-label-custom">Longitude</label>
-                                    <input type="text" name="longitude" class="form-control form-control-custom" placeholder="104.9282" value="<?php if ($post && isset($post['longitude']) && $post['longitude'] !== null && $post['longitude'] !== '') echo htmlspecialchars($post['longitude']); ?>">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label form-label-custom">Expires At</label>
-                                    <?php
-                                    $expires_at_value = '';
-                                    if ($post && !empty($post['expires_at'])) {
-                                        $expires_at_value = date('Y-m-d\TH:i', strtotime($post['expires_at']));
-                                    }
-                                    ?>
-                                    <input type="datetime-local" name="expires_at" class="form-control form-control-custom" value="<?php echo htmlspecialchars($expires_at_value); ?>">
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <div class="form-check mb-3">
-                                        <input class="form-check-input" type="checkbox" name="archive_on_expiry" id="archive_on_expiry" <?php if (!$post || !isset($post['archive_on_expiry']) || $post['archive_on_expiry']) echo 'checked'; ?>>
-                                        <label class="form-check-label text-secondary small" for="archive_on_expiry">Auto-archive</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <p class="text-secondary small mb-0 mt-2">Use coordinates for map/nearby features. Expired posts auto-archive when enabled.</p>
-                        </div>
-                    </div>
                     <div class="col-md-6">
                         <label class="form-label form-label-custom">Image</label>
                         <?php
@@ -832,16 +706,6 @@ if (previewBtn && typeof bootstrap !== 'undefined') {
     });
 }
 
-(function() {
-    var postKind = document.getElementById('post_kind');
-    var knowledgeWrap = document.getElementById('knowledge_label_wrap');
-    if (!postKind || !knowledgeWrap) return;
-    function syncKnowledgeField() {
-        knowledgeWrap.style.display = postKind.value === 'knowledge' ? '' : 'none';
-    }
-    postKind.addEventListener('change', syncKnowledgeField);
-    syncKnowledgeField();
-})();
 </script>
 <?php else: ?>
 <div class="glass-panel p-4">

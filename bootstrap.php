@@ -25,20 +25,34 @@ $current_script = '';
 if (isset($_SERVER['SCRIPT_NAME'])) {
     $current_script = basename(str_replace('\\', '/', $_SERVER['SCRIPT_NAME']));
 }
-if ($current_script === 'set-language.php' || $current_script === 'health.php') {
+$light_scripts = array(
+    'set-language.php',
+    'health.php',
+    'login.php',
+    'register.php',
+    'forgot-password.php',
+    'resend-verification.php',
+);
+if (in_array($current_script, $light_scripts, true)) {
     $bootstrap_light_request = true;
 }
 
 if (!$bootstrap_light_request) {
     ensure_admin_tables_loaded($pdo);
     archive_expired_posts($pdo);
+} else {
+    load_admin_settings($pdo);
+    check_maintenance_mode();
 }
 
 if (isLoggedIn() && $current_script !== 'set-language.php') {
     ensure_active_authenticated_user($pdo);
 }
 
-ensure_upload_directories();
+$is_serverless = getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false;
+if (!$is_serverless) {
+    ensure_upload_directories();
+}
 
 require_once APP_PATH . '/bootstrap/autoload.php';
 bootstrap_register_autoload();

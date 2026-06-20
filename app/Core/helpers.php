@@ -309,6 +309,21 @@ function delete_upload($filename, $subdir)
     }
 }
 
+function serverless_upload_error_message($type)
+{
+    $is_serverless = getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false;
+    if (!$is_serverless) {
+        return null;
+    }
+
+    ensure_cloudinary_loaded();
+    if (!cloudinary_enabled()) {
+        return $type . ' upload on Vercel requires Cloudinary. Add CLOUDINARY_* environment variables in Vercel settings.';
+    }
+
+    return null;
+}
+
 function handle_image_upload($file, $existing)
 {
     $result = array('ok' => false, 'error' => 'Image upload failed');
@@ -346,6 +361,11 @@ function handle_image_upload($file, $existing)
         if (function_exists('app_log_error')) {
             app_log_error('Cloudinary image upload failed, using local disk: ' . $uploaded['error']);
         }
+        $serverless_msg = serverless_upload_error_message('Image');
+        if ($serverless_msg !== null) {
+            $result['error'] = $uploaded['error'] !== '' ? $uploaded['error'] : $serverless_msg;
+            return $result;
+        }
     }
 
     if (move_uploaded_file($file['tmp_name'], upload_path('') . $name)) {
@@ -355,6 +375,12 @@ function handle_image_upload($file, $existing)
 
         $result['ok'] = true;
         $result['filename'] = $name;
+        return $result;
+    }
+
+    $serverless_msg = serverless_upload_error_message('Image');
+    if ($serverless_msg !== null) {
+        $result['error'] = $serverless_msg;
         return $result;
     }
 
@@ -399,6 +425,11 @@ function handle_video_upload($file, $existing)
         if (function_exists('app_log_error')) {
             app_log_error('Cloudinary video upload failed, using local disk: ' . $uploaded['error']);
         }
+        $serverless_msg = serverless_upload_error_message('Video');
+        if ($serverless_msg !== null) {
+            $result['error'] = $uploaded['error'] !== '' ? $uploaded['error'] : $serverless_msg;
+            return $result;
+        }
     }
 
     if (move_uploaded_file($file['tmp_name'], upload_path('videos') . $name)) {
@@ -408,6 +439,12 @@ function handle_video_upload($file, $existing)
 
         $result['ok'] = true;
         $result['filename'] = $name;
+        return $result;
+    }
+
+    $serverless_msg = serverless_upload_error_message('Video');
+    if ($serverless_msg !== null) {
+        $result['error'] = $serverless_msg;
         return $result;
     }
 

@@ -6065,7 +6065,7 @@ body.has-reading-progress { scroll-padding-top: 92px; }
     .post-actions-bar {
         position: sticky;
         bottom: calc(var(--mobile-tab-height) + env(safe-area-inset-bottom, 0px) + 0.35rem);
-        z-index: 20;
+        z-index: 1060;
         margin-left: -0.25rem;
         margin-right: -0.25rem;
         padding: 0.65rem;
