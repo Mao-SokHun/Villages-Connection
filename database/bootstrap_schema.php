@@ -12,9 +12,10 @@ function migrate_bootstrap_schema_if_needed(PDO $pdo)
             return false;
         }
     } catch (PDOException $e) {
-        // Fall through and attempt bootstrap.
+        throw $e;
     }
 
+    // users table missing — safe to bootstrap on empty databases only.
     $schema_path = __DIR__ . '/schema.sql';
     if (!is_file($schema_path)) {
         throw new RuntimeException('Missing database/schema.sql');
