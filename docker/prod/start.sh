@@ -14,6 +14,8 @@ echo "nginx listening on 0.0.0.0:${PORT}"
 nginx -t
 
 mkdir -p \
+    /run/nginx \
+    /var/log/nginx \
     /var/www/html/storage/cache \
     /var/www/html/storage/backups \
     /var/www/html/public/uploads/avatars \
@@ -24,7 +26,7 @@ chown -R www-data:www-data /var/www/html/storage /var/www/html/public/uploads 2>
 php-fpm -D
 echo "php-fpm started on 127.0.0.1:9000"
 
-# Start nginx immediately so Render detects $PORT (migrations can be slow over Supabase).
+# Start nginx in foreground first so Render's port scan sees $PORT immediately.
 (
     echo "Running database migrations in background..."
     if php /var/www/html/database/migrate.php; then
@@ -34,4 +36,5 @@ echo "php-fpm started on 127.0.0.1:9000"
     fi
 ) &
 
+echo "Starting nginx on 0.0.0.0:${PORT}..."
 exec nginx -g 'daemon off;'
