@@ -52,8 +52,8 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <p class="text-secondary small mb-0">Read admin replies to your contact messages here.</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="contact.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-envelope"></i> Contact Us</a>
-                    <a href="notifications.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-bell"></i> Notifications</a>
+                    <a href="<?php echo app_url('contact.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-envelope"></i> Contact Us</a>
+                    <a href="<?php echo app_url('notifications.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-bell"></i> Notifications</a>
                 </div>
             </div>
 
@@ -61,14 +61,14 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             <div class="empty-state py-4">
                 <i class="fa-regular fa-envelope-open fa-2x text-secondary mb-3"></i>
                 <p class="text-secondary mb-3">You have not sent any contact messages yet.</p>
-                <a href="contact.php" class="btn btn-gradient btn-sm">Send a Message</a>
+                <a href="<?php echo app_url('contact.php'); ?>" class="btn btn-gradient btn-sm">Send a Message</a>
             </div>
             <?php else: ?>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="support-thread-list">
                         <?php foreach ($messages as $msg): ?>
-                        <a href="support.php?message=<?php echo (int) $msg['id']; ?>" class="support-thread-item <?php if ($active_message && (int) $active_message['id'] == (int) $msg['id']) echo 'active'; ?>">
+                        <a href="<?php echo app_url('support.php?message=' . (int)$msg['id']); ?>" class="support-thread-item <?php if ($active_message && (int) $active_message['id'] == (int) $msg['id']) echo 'active'; ?>">
                             <strong><?php echo htmlspecialchars(excerpt($msg['subject'], 42)); ?></strong>
                             <span class="small text-secondary d-block"><?php echo date('M j, Y', strtotime($msg['created_at'])); ?></span>
                             <?php if (!empty($msg['admin_reply'])): ?>

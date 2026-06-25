@@ -126,6 +126,9 @@ if ($path === '/') {
     return true;
 }
 
+if (!defined('BOOTSTRAP_LIGHT_REQUEST')) {
+    define('BOOTSTRAP_LIGHT_REQUEST', true);
+}
 http_response_code(404);
 require $publicRoot . '/404.php';
 return true;

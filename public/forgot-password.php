@@ -84,7 +84,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <?php render_user_alerts($errors, 'danger'); ?>
                         <?php endif; ?>
 
-                        <form action="forgot-password.php" method="POST">
+                        <form action="<?php echo app_url('forgot-password.php'); ?>" method="POST">
                             <?php echo csrf_field(); ?>
                             <div class="mb-4">
                                 <label for="email" class="form-label form-label-custom">Email Address</label>
@@ -96,7 +96,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         </form>
 
                         <div class="text-center mt-4">
-                            <a href="login.php" class="text-warning small text-decoration-none fw-semibold">
+                            <a href="<?php echo app_url('login.php'); ?>" class="text-warning small text-decoration-none fw-semibold">
                                 <i class="fa-solid fa-arrow-left"></i> Back to Sign In
                             </a>
                         </div>

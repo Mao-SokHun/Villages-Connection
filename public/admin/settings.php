@@ -23,7 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $keys = array(
         'registration_enabled',
-        'require_post_approval',
         'require_email_verification',
         'maintenance_mode',
         'comments_enabled'
@@ -86,10 +85,6 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
             <div class="form-check form-switch mb-2">
                 <input class="form-check-input" type="checkbox" name="registration_enabled" id="registration_enabled" <?php if (registration_is_enabled()) echo 'checked'; ?>>
                 <label class="form-check-label text-secondary" for="registration_enabled">Allow new registrations</label>
-            </div>
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" name="require_post_approval" id="require_post_approval" <?php if (posts_require_approval()) echo 'checked'; ?>>
-                <label class="form-check-label text-secondary" for="require_post_approval">Require admin approval before posts go live</label>
             </div>
             <div class="form-check form-switch mb-2">
                 <input class="form-check-input" type="checkbox" name="require_email_verification" id="require_email_verification" <?php if (email_verification_required()) echo 'checked'; ?>>

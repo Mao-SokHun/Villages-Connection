@@ -217,8 +217,8 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     <?php if ($is_own_profile): ?>
                     <div class="profile-actions">
                         <a href="<?php echo app_url('edit-profile.php'); ?>" class="btn btn-gradient btn-sm"><i class="fa-solid fa-pen"></i> <?php echo __('profile.edit_profile'); ?></a>
-                        <a href="admin/dashboard.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-gauge"></i> Dashboard</a>
-                        <a href="admin/posts.php" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-square-pen"></i> My Posts</a>
+                        <a href="<?php echo admin_area_url('dashboard.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+                        <a href="<?php echo admin_area_url('posts.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-square-pen"></i> My Posts</a>
                         <?php if ($own_drafts > 0): ?>
                         <a href="<?php echo admin_area_url('posts.php?status=Draft'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-file-lines"></i> <?php echo __('profile.my_drafts'); ?> (<?php echo $own_drafts; ?>)</a>
                         <?php endif; ?>
@@ -285,15 +285,15 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             <nav class="profile-pagination mt-4" aria-label="<?php echo htmlspecialchars(__('profile.pagination')); ?>">
                 <ul class="pagination pagination-sm justify-content-center mb-0">
                     <?php if ($posts_page > 1): ?>
-                    <li class="page-item"><a class="page-link" href="<?php echo $profile_page_base . ($posts_page - 1); ?>">Previous</a></li>
+                    <li class="page-item"><a class="page-link" href="<?php echo app_url($profile_page_base . ($posts_page - 1)); ?>">Previous</a></li>
                     <?php endif; ?>
                     <?php for ($pg = 1; $pg <= $posts_total_pages; $pg++): ?>
                     <li class="page-item <?php if ($pg == $posts_page) echo 'active'; ?>">
-                        <a class="page-link" href="<?php echo $profile_page_base . $pg; ?>"><?php echo $pg; ?></a>
+                        <a class="page-link" href="<?php echo app_url($profile_page_base . $pg); ?>"><?php echo $pg; ?></a>
                     </li>
                     <?php endfor; ?>
                     <?php if ($posts_page < $posts_total_pages): ?>
-                    <li class="page-item"><a class="page-link" href="<?php echo $profile_page_base . ($posts_page + 1); ?>">Next</a></li>
+                    <li class="page-item"><a class="page-link" href="<?php echo app_url($profile_page_base . ($posts_page + 1)); ?>">Next</a></li>
                     <?php endif; ?>
                 </ul>
             </nav>

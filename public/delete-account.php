@@ -5,7 +5,7 @@ requireLogin();
 $user = get_user_by_id($pdo, $_SESSION['user_id']);
 if (!$user || user_is_deleted($user)) {
     perform_logout('danger', 'Account not found.');
-    header('Location: login.php');
+    header('Location: ' . app_url('login.php'));
     exit;
 }
 
@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             if ($ok) {
                 perform_logout('success', 'Your account has been closed. Your data is kept but hidden from the site.');
-                header('Location: index.php');
+                header('Location: ' . app_url('index.php'));
                 exit;
             } else {
                 $errors[] = 'Could not close account. Please contact support.';

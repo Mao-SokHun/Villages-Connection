@@ -15,7 +15,7 @@ bootstrap_load_core_modules(false);
 
 init_locale();
 
-$bootstrap_light_request = false;
+$bootstrap_light_request = defined('BOOTSTRAP_LIGHT_REQUEST') && BOOTSTRAP_LIGHT_REQUEST;
 $bootstrap_path = request_uri_path();
 if (strpos($bootstrap_path, '/api/') === 0 || strpos($bootstrap_path, '/auth/') === 0) {
     $bootstrap_light_request = true;
@@ -49,8 +49,7 @@ if (isLoggedIn() && $current_script !== 'set-language.php') {
     ensure_active_authenticated_user($pdo);
 }
 
-$is_serverless = getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false;
-if (!$is_serverless) {
+if (!app_is_serverless()) {
     ensure_upload_directories();
 }
 

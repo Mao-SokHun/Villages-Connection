@@ -15,7 +15,7 @@ if ($token != '') {
     } else {
         setFlashMessage('danger', __('auth.verification_invalid'));
     }
-    header('Location: login.php');
+    header('Location: ' . app_url('login.php'));
     exit;
 }
 
@@ -56,7 +56,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
 
             <?php if ($sent): ?>
             <div class="alert alert-success"><?php echo __('auth.verification_sent'); ?></div>
-            <a href="login.php" class="btn btn-gradient"><?php echo __('auth.sign_in'); ?></a>
+            <a href="<?php echo app_url('login.php'); ?>" class="btn btn-gradient"><?php echo __('auth.sign_in'); ?></a>
             <?php else: ?>
 
             <?php if (count($errors) > 0): ?>
@@ -64,7 +64,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             <?php endif; ?>
 
             <p class="text-secondary"><?php echo __('auth.verify_email_first'); ?></p>
-            <form method="POST" action="resend-verification.php">
+            <form method="POST" action="<?php echo app_url('resend-verification.php'); ?>">
                 <?php echo csrf_field(); ?>
                 <div class="mb-3">
                     <label class="form-label form-label-custom"><?php echo __('auth.email'); ?></label>
@@ -72,7 +72,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                 </div>
                 <button type="submit" class="btn btn-gradient w-100"><?php echo __('auth.resend_verification'); ?></button>
             </form>
-            <p class="text-secondary small mt-3 mb-0"><a href="login.php" class="footer-link"><?php echo __('auth.sign_in'); ?></a></p>
+            <p class="text-secondary small mt-3 mb-0"><a href="<?php echo app_url('login.php'); ?>" class="footer-link"><?php echo __('auth.sign_in'); ?></a></p>
             <?php endif; ?>
         </div>
     </div>

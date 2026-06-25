@@ -289,7 +289,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
                         VALUES (:category_id, :user_id, :title, :slug, :summary, :content, :image_url, :image_alt, :video_url, :video_type, :location, :latitude, :longitude, :expires_at, :archive_on_expiry, :post_kind, :knowledge_label, :challenge_id, :is_featured, :status)
                         RETURNING id';
                 $insert_stmt = $pdo->prepare($sql);
-                $insert_stmt->execute($fields);
+                $bool_fields = array('archive_on_expiry', 'is_featured');
+                foreach ($fields as $key => $value) {
+                    $param = ':' . $key;
+                    if (in_array($key, $bool_fields, true)) {
+                        $insert_stmt->bindValue($param, (bool) $value, PDO::PARAM_BOOL);
+                    } else {
+                        $insert_stmt->bindValue($param, $value);
+                    }
+                }
+                $insert_stmt->execute();
                 $new_post_id = (int) $insert_stmt->fetchColumn();
                 log_activity($pdo, 'post.created', $fields['title']);
                 if ($fields['status'] == 'Published') {
@@ -310,8 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
                 $existing_post = $check->fetch();
                 if (!$existing_post || !admin_can_manage_post($existing_post)) {
                     setFlashMessage('danger', 'You cannot edit this post.');
-                    header('Location: posts.php');
-                    exit;
+                    admin_redirect_to('posts.php');
                 }
 
                 $sql = 'SELECT COUNT(*) FROM posts WHERE slug = :slug AND id != :id';
@@ -337,7 +345,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
                         latitude=:latitude, longitude=:longitude, expires_at=:expires_at, archive_on_expiry=:archive_on_expiry,
                         post_kind=:post_kind, knowledge_label=:knowledge_label, challenge_id=:challenge_id,
                         is_featured=:is_featured, status=:status, updated_at=CURRENT_TIMESTAMP WHERE id=:id';
-                $pdo->prepare($sql)->execute($update_fields);
+                $update_stmt = $pdo->prepare($sql);
+                $bool_fields = array('archive_on_expiry', 'is_featured');
+                foreach ($update_fields as $key => $value) {
+                    $param = ':' . $key;
+                    if (in_array($key, $bool_fields, true)) {
+                        $update_stmt->bindValue($param, (bool) $value, PDO::PARAM_BOOL);
+                    } else {
+                        $update_stmt->bindValue($param, $value);
+                    }
+                }
+                $update_stmt->execute();
                 if ($existing_post['status'] != $fields['status']) {
                     if ($fields['status'] == 'Published' || $fields['status'] == 'Rejected') {
                         notify_post_status_change($pdo, $id, $fields['status']);
@@ -347,8 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['bulk_action']) && !is
                 }
                 setFlashMessage('success', 'Post updated successfully');
             }
-            header('Location: posts.php');
-            exit;
+            admin_redirect_to('posts.php');
         } catch (PDOException $e) {
             app_log_error('Post save failed: ' . $e->getMessage());
             $errors[] = app_public_error_message('Could not save the post.');
@@ -388,7 +405,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
             <?php if (count($errors) > 0): ?>
             <?php render_user_alerts($errors, 'danger'); ?>
             <?php endif; ?>
-            <form method="POST" enctype="multipart/form-data" action="posts.php?action=<?php echo $action; ?><?php if ($id > 0) echo '&id=' . $id; ?>">
+            <form method="POST" enctype="multipart/form-data" action="<?php echo htmlspecialchars(admin_area_url('posts.php?action=' . $action . ($id > 0 ? '&id=' . $id : ''))); ?>">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="db_action" value="<?php echo $action; ?>">
                 <input type="hidden" name="existing_image" value="<?php if ($post && isset($post['image_url'])) echo htmlspecialchars($post['image_url']); ?>">
@@ -468,7 +485,6 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                             <option value="Rejected" selected>Rejected</option>
                             <?php endif; ?>
                         </select>
-                        <p class="text-secondary small mb-0 mt-1"><i class="fa-solid fa-circle-info"></i> Only <strong>Published</strong> posts appear on the home feed. Draft and pending posts show in <?php echo isAdmin() ? 'Posts' : 'My Posts'; ?> only.</p>
                     </div>
                     <?php if (isAdmin()): ?>
                     <div class="col-md-3 d-flex align-items-end">
@@ -500,6 +516,9 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                             <input type="file" name="image" id="image_input" class="file-upload-input" accept="image/*">
                         </div>
                         <div class="form-text text-secondary small">JPG, PNG, WEBP, or GIF — max 5 MB</div>
+                        <?php if (app_is_serverless()): ?>
+                        <p class="form-text text-warning small mb-0"><i class="fa-solid fa-triangle-exclamation"></i> <?php echo __('post.upload.vercel_image_hint'); ?></p>
+                        <?php endif; ?>
                         <?php if ($current_image != '' && post_media_available($current_image, '')): ?>
                         <div class="mt-2">
                             <img src="<?php echo htmlspecialchars(resolve_media_src($current_image, '')); ?>" alt="Current post image" class="rounded" style="max-width:180px;max-height:120px;object-fit:cover;">
@@ -543,6 +562,9 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                             <input type="file" name="video_file" id="video_file" class="file-upload-input" accept="video/mp4,video/webm">
                         </div>
                         <div class="form-text text-secondary small">MP4, WEBM, or MOV — max 500 MB, up to 6 minutes</div>
+                        <?php if (app_is_serverless()): ?>
+                        <p class="form-text text-warning small mb-0" id="vercel_video_hint"><i class="fa-solid fa-triangle-exclamation"></i> <?php echo __('post.upload.vercel_video_hint'); ?></p>
+                        <?php endif; ?>
                         <input type="url" name="youtube_url" id="youtube_url" class="form-control form-control-custom" placeholder="https://youtube.com/watch?v=..."
                             value="<?php if ($post_vtype == 'youtube' && $post && isset($post['video_url'])) echo htmlspecialchars($post['video_url']); ?>">
                     </div>
@@ -840,7 +862,7 @@ if (previewBtn && typeof bootstrap !== 'undefined') {
         <?php endif; ?>
     <?php else: ?>
     <?php if (isAdmin()): ?>
-    <form method="POST" action="posts.php" id="bulk_posts_form">
+    <form method="POST" action="<?php echo htmlspecialchars(admin_area_url('posts.php')); ?>" id="bulk_posts_form">
         <?php echo csrf_field(); ?>
         <div class="d-flex flex-wrap gap-2 mb-3">
             <select name="bulk_action" class="form-select form-control-custom" style="max-width:180px">

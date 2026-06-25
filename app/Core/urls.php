@@ -319,6 +319,11 @@ function exposed_php_redirect_url()
 
 function enforce_pretty_url_redirect()
 {
+    $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'GET';
+    if ($method !== 'GET' && $method !== 'HEAD') {
+        return;
+    }
+
     $target = exposed_php_redirect_url();
     if ($target === null) {
         return;

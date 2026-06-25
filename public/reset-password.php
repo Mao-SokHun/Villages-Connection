@@ -99,7 +99,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <?php render_user_alerts($errors, 'danger'); ?>
                         <?php endif; ?>
 
-                        <form action="reset-password.php" method="POST">
+                        <form action="<?php echo app_url('reset-password.php'); ?>" method="POST">
                             <?php echo csrf_field(); ?>
                             <div class="mb-3">
                                 <label for="email" class="form-label form-label-custom">Email Address</label>
@@ -129,7 +129,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
 
                         <div class="text-center mt-4">
                             <span class="text-secondary small">Did not receive a code?</span>
-                            <a href="forgot-password.php" class="text-warning small text-decoration-none ms-1 fw-semibold">Send again</a>
+                            <a href="<?php echo app_url('forgot-password.php'); ?>" class="text-warning small text-decoration-none ms-1 fw-semibold">Send again</a>
                         </div>
                     </div>
                 </div>

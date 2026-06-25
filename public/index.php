@@ -1,9 +1,24 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 
+$cat_slug = '';
+if (isset($_GET['cat'])) {
+    $cat_slug = trim($_GET['cat']);
+}
+
 $page_title = trim(get_setting('seo_home_title', 'Home'));
 if ($page_title == '') {
     $page_title = 'Home';
+}
+
+// Update page title for category pages
+if ($cat_slug != '') {
+    $stmt = $pdo->prepare('SELECT name FROM categories WHERE slug = :slug LIMIT 1');
+    $stmt->execute(array('slug' => $cat_slug));
+    $category = $stmt->fetch();
+    if ($category) {
+        $page_title = $category['name'];
+    }
 }
 
 $page_description = trim(get_setting('seo_home_description', ''));
@@ -12,11 +27,6 @@ if ($page_description == '') {
 }
 
 require_once ROOT_PATH . '/app/Views/layouts/header.php';
-
-$cat_slug = '';
-if (isset($_GET['cat'])) {
-    $cat_slug = trim($_GET['cat']);
-}
 
 $search = '';
 if (isset($_GET['search'])) {

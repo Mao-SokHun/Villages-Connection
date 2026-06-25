@@ -234,14 +234,6 @@ function resolve_post_status_for_author($requested_status)
         $requested_status = 'Draft';
     }
 
-    if (isAdmin()) {
-        return $requested_status;
-    }
-
-    if (posts_require_approval() && $requested_status == 'Published') {
-        return 'Pending';
-    }
-
     return $requested_status;
 }
 

@@ -23,9 +23,11 @@ $show_user_menu_my_posts = true;
 $show_user_menu_categories = true;
 $show_user_menu_my_profile = true;
 $show_user_menu_notifications = true;
+$show_user_menu_bookmarks = true;
+$show_user_menu_support = true;
 $show_user_menu_edit_profile = true;
 
-// Navbar bell covers notifications everywhere.
+// Navbar bell covers notifications in the user dropdown.
 $show_user_menu_notifications = false;
 // Footer CTA also links to create/register flow for guests.
 $show_user_menu_create_post = isLoggedIn() && !isAdmin();
@@ -58,10 +60,7 @@ if (!isset($canonical_url) || $canonical_url == '') {
 <head>
     <meta charset="UTF-8">
     <?php if (!$is_admin_dir && pretty_urls_enabled()):
-        $document_base_href = '/';
-        if (defined('APP_URL') && APP_URL != '') {
-            $document_base_href = rtrim(APP_URL, '/') . '/';
-        }
+        $document_base_href = rtrim(site_base_url(), '/') . '/';
     ?>
     <base href="<?php echo htmlspecialchars($document_base_href); ?>">
     <?php endif; ?>
@@ -369,9 +368,13 @@ if (!isset($canonical_url) || $canonical_url == '') {
                             <?php if ($show_user_menu_edit_profile): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('edit-profile.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-user-pen"></i></span><span class="dropdown-item-text"><?php echo __('nav.edit_profile'); ?></span></a></li>
                             <?php endif; ?>
-                            <?php if ($show_user_menu_notifications): ?>
+                            <?php if ($show_user_menu_bookmarks): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('bookmarks.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-bookmark"></i></span><span class="dropdown-item-text"><?php echo __('nav.bookmarks'); ?></span></a></li>
+                            <?php endif; ?>
+                            <?php if ($show_user_menu_notifications): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('notifications.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-bell"></i></span><span class="dropdown-item-text"><?php echo __('nav.notifications'); ?></span></a></li>
+                            <?php endif; ?>
+                            <?php if ($show_user_menu_support): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('support.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-headset"></i></span><span class="dropdown-item-text"><?php echo __('nav.support_messages'); ?></span></a></li>
                             <?php endif; ?>
                             <li><hr class="dropdown-divider-custom"></li>

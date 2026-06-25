@@ -1,8 +1,13 @@
 <?php
 
+function app_is_serverless()
+{
+    return getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false;
+}
+
 function app_cache_dir()
 {
-    if (getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false) {
+    if (app_is_serverless()) {
         $dir = sys_get_temp_dir() . '/vc_cache';
     } else {
         $dir = STORAGE_PATH . '/cache';
@@ -311,8 +316,7 @@ function delete_upload($filename, $subdir)
 
 function serverless_upload_error_message($type)
 {
-    $is_serverless = getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false;
-    if (!$is_serverless) {
+    if (!app_is_serverless()) {
         return null;
     }
 
@@ -711,6 +715,27 @@ function handle_avatar_upload($file, $existing)
     $ext = $check['extension'];
     $name = upload_secure_filename($ext);
 
+    ensure_cloudinary_loaded();
+    if (cloudinary_enabled()) {
+        $uploaded = cloudinary_upload_file($file['tmp_name'], 'image', 'avatars');
+        if ($uploaded['ok'] == true) {
+            if ($existing != '') {
+                delete_upload($existing, 'avatars');
+            }
+            $result['ok'] = true;
+            $result['filename'] = $uploaded['filename'];
+            return $result;
+        }
+        if (function_exists('app_log_error')) {
+            app_log_error('Cloudinary avatar upload failed, using local disk: ' . $uploaded['error']);
+        }
+        $serverless_msg = serverless_upload_error_message('Avatar');
+        if ($serverless_msg !== null) {
+            $result['error'] = $uploaded['error'] !== '' ? $uploaded['error'] : $serverless_msg;
+            return $result;
+        }
+    }
+
     if (move_uploaded_file($file['tmp_name'], upload_path('avatars') . $name)) {
         if ($existing != '') {
             delete_upload($existing, 'avatars');
@@ -718,6 +743,12 @@ function handle_avatar_upload($file, $existing)
 
         $result['ok'] = true;
         $result['filename'] = $name;
+        return $result;
+    }
+
+    $serverless_msg = serverless_upload_error_message('Avatar');
+    if ($serverless_msg !== null) {
+        $result['error'] = $serverless_msg;
         return $result;
     }
 

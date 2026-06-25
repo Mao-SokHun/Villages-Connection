@@ -270,7 +270,7 @@ if ($author_bio != '') {
                     <div class="text-white fw-semibold"><?php echo htmlspecialchars($author_name); ?></div>
                     <div class="text-secondary small author-card-bio"><?php echo htmlspecialchars(excerpt($author_subtitle, 120)); ?></div>
                     <?php if ($author_id > 0): ?>
-                    <a href="profile.php?id=<?php echo $author_id; ?>" class="author-profile-link small">
+                    <a href="<?php echo app_url('profile.php?id=' . (int)$author_id); ?>" class="author-profile-link small">
                         <i class="fa-solid fa-user"></i> <?php echo __('post.view_profile'); ?>
                     </a>
                     <?php endif; ?>
@@ -329,7 +329,7 @@ if ($author_bio != '') {
                 <?php endif; ?>
             </form>
             <?php else: ?>
-            <p class="text-secondary small mb-4"><a href="login.php" class="footer-link"><?php echo __('nav.sign_in'); ?></a> <?php echo __('comments.sign_in'); ?></p>
+            <p class="text-secondary small mb-4"><a href="<?php echo app_url('login.php'); ?>" class="footer-link"><?php echo __('nav.sign_in'); ?></a> <?php echo __('comments.sign_in'); ?></p>
             <?php endif; ?>
 
             <?php if ($comment_total == 0): ?>

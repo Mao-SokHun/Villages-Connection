@@ -4,7 +4,7 @@ requireLogin();
 
 if (isset($_GET['read']) && (int) $_GET['read'] > 0) {
     setFlashMessage('warning', __('notifications.use_open'));
-    header('Location: notifications.php');
+    header('Location: ' . app_url('notifications.php'));
     exit;
 }
 
@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mark_read'])) {
         header('Location: ' . app_url(safe_redirect_path($go, 'notifications.php')));
         exit;
     }
-    header('Location: notifications.php');
+    header('Location: ' . app_url('notifications.php'));
     exit;
 }
 
@@ -66,7 +66,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                     </button>
                     <?php endif; ?>
                 <?php if (count($notifications) > 0): ?>
-                <form method="POST" action="notifications.php">
+                <form method="POST" action="<?php echo app_url('notifications.php'); ?>">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="mark_all" value="1">
                     <button type="submit" class="btn btn-outline-custom btn-sm"><?php echo __('notifications.mark_all'); ?></button>
@@ -92,7 +92,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                         <div class="notification-item-time"><?php echo date('M j, Y H:i', strtotime($note['created_at'])); ?></div>
                     </div>
                     <?php if ($note['link_url'] != ''): ?>
-                    <form method="POST" action="notifications.php" class="d-inline">
+                    <form method="POST" action="<?php echo app_url('notifications.php'); ?>" class="d-inline">
                         <?php echo csrf_field(); ?>
                         <input type="hidden" name="mark_read" value="<?php echo (int) $note['id']; ?>">
                         <input type="hidden" name="go" value="<?php echo htmlspecialchars($note['link_url']); ?>">

@@ -25,7 +25,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
             <div class="empty-state py-4">
                 <i class="fa-regular fa-bookmark fa-2x text-secondary mb-3"></i>
                 <p class="text-secondary mb-3"><?php echo __('bookmarks.empty'); ?></p>
-                <a href="index.php" class="btn btn-gradient btn-sm"><?php echo __('nav.feed'); ?></a>
+                <a href="<?php echo app_url('index.php'); ?>" class="btn btn-gradient btn-sm"><?php echo __('nav.feed'); ?></a>
             </div>
             <?php else: ?>
             <div class="row g-4">
@@ -40,7 +40,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                 <ul class="pagination justify-content-center">
                     <?php for ($i = 1; $i <= $data['pages']; $i++): ?>
                     <li class="page-item <?php if ($i == $data['page']) echo 'active'; ?>">
-                        <a class="page-link" href="bookmarks.php?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                        <a class="page-link" href="<?php echo app_url('bookmarks.php?page=' . (int)$i); ?>"><?php echo $i; ?></a>
                     </li>
                     <?php endfor; ?>
                 </ul>
