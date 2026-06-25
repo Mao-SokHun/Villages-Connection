@@ -86,7 +86,7 @@ class UploadsTest extends TestCase
     public function testUploadMaxSizeConstants()
     {
         $this->assertSame(5 * 1024 * 1024, upload_max_image_bytes());
-        $this->assertSame(2 * 1024 * 1024, upload_max_avatar_bytes());
+        $this->assertSame(5 * 1024 * 1024, upload_max_avatar_bytes());
         $this->assertSame(500 * 1024 * 1024, upload_max_video_bytes());
         $this->assertSame(360, upload_max_video_duration_seconds());
     }

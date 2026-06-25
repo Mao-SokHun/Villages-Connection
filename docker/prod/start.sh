@@ -22,7 +22,10 @@ mkdir -p \
 chown -R www-data:www-data /var/www/html/storage /var/www/html/public/uploads 2>/dev/null || true
 
 echo "Running database migrations..."
-php /var/www/html/database/migrate.php || echo "Migration skipped or failed — check DB env vars."
+php /var/www/html/database/migrate.php || {
+    echo "FATAL: database migrations failed — check DB_* env vars on Render."
+    exit 1
+}
 
 php-fpm -D
 exec nginx -g 'daemon off;'

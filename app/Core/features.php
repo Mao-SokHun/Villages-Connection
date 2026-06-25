@@ -88,7 +88,7 @@ function get_featured_posts($pdo, $limit = 3)
           AND p.is_featured = TRUE
           AND (p.expires_at IS NULL OR p.expires_at > CURRENT_TIMESTAMP)" .
         sql_hide_inactive_authors('u') .
-        ' ORDER BY p.updated_at DESC, p.id DESC LIMIT ' . $limit;
+        ' ORDER BY p.created_at DESC, p.id DESC LIMIT ' . $limit;
 
     return $pdo->query($sql)->fetchAll();
 }

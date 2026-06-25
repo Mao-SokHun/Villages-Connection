@@ -28,7 +28,9 @@ cp .env.example .env
 # Edit .env — set DB_PASSWORD, keep DB_HOST=db for Docker
 
 docker compose up -d --build
+# First time only — creates tables on empty local Postgres, then applies migrations:
 docker compose exec -T app php database/migrate.php
+docker compose exec -T app php database/seed_demo.php
 docker compose exec -T app php database/migrate_user_preferences.php
 docker compose exec -T app php database/migrate_incident_reports.php
 docker compose exec -T app php database/migrate_phase25.php

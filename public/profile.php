@@ -80,7 +80,7 @@ $posts_sql = "SELECT p.title, p.slug, p.summary, p.image_url, p.image_alt, p.vie
     FROM posts p
     LEFT JOIN categories c ON p.category_id = c.id
     WHERE p.user_id = :uid AND p.status = 'Published'
-    ORDER BY p.id DESC
+    ORDER BY p.created_at DESC, p.id DESC
     LIMIT :limit OFFSET :offset";
 $posts_stmt = $pdo->prepare($posts_sql);
 $posts_stmt->bindValue(':uid', (int) $user['id'], PDO::PARAM_INT);

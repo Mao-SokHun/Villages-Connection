@@ -258,7 +258,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
                             ?></span>
                             <input type="file" name="avatar" id="avatar_input" class="file-upload-input" accept="image/*">
                         </div>
-                        <div class="form-text text-secondary small">JPG, PNG, WEBP, or GIF. Max 2MB.</div>
+                        <div class="form-text text-secondary small">JPG, PNG, WEBP, or GIF. Max <?php echo (int) floor(upload_max_avatar_bytes() / (1024 * 1024)); ?>MB.</div>
                         <?php if ($avatar != ''): ?>
                         <div class="form-check mt-2">
                             <input class="form-check-input" type="checkbox" name="remove_avatar" value="1" id="remove_avatar">

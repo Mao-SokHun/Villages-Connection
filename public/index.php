@@ -26,8 +26,6 @@ if ($page_description == '') {
     $page_description = site_default_meta_description();
 }
 
-require_once ROOT_PATH . '/app/Views/layouts/header.php';
-
 $search = '';
 if (isset($_GET['search'])) {
     $search = trim($_GET['search']);
@@ -96,9 +94,9 @@ if ($page < 1) {
 
 $offset = ($page - 1) * $per_page;
 
-$order = ' ORDER BY p.id DESC';
+$order = ' ORDER BY p.created_at DESC, p.id DESC';
 if ($sort == 'popular') {
-    $order = ' ORDER BY p.views DESC, p.likes DESC, p.id DESC';
+    $order = ' ORDER BY p.views DESC, p.likes DESC, p.created_at DESC, p.id DESC';
 }
 
 $query = "SELECT p.*, c.name as category_name, c.slug as category_slug, c.icon as category_icon,
@@ -170,6 +168,8 @@ if ($sort != 'latest') {
 if ($author_id > 0) {
     $page_params['author'] = $author_id;
 }
+
+require_once ROOT_PATH . '/app/Views/layouts/header.php';
 ?>
 
 <?php if ($show_hero): ?>

@@ -7,7 +7,7 @@ function upload_max_image_bytes()
 
 function upload_max_avatar_bytes()
 {
-    return 2 * 1024 * 1024;
+    return 5 * 1024 * 1024;
 }
 
 function upload_max_video_bytes()

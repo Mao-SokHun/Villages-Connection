@@ -6,6 +6,17 @@ require_once __DIR__ . '/../config/database.php';
 
 echo "=== Village Connect migration runner ===\n\n";
 
+require_once __DIR__ . '/bootstrap_schema.php';
+
+try {
+    if (migrate_bootstrap_schema_if_needed($pdo)) {
+        echo "BOOTSTRAP: loaded schema.sql (fresh database)\n\n";
+    }
+} catch (Exception $e) {
+    echo 'ERROR bootstrapping schema: ' . $e->getMessage() . "\n";
+    exit(1);
+}
+
 $migrations = array(
     'migrate_profile.php',
     'migrate_security.php',
@@ -22,6 +33,9 @@ $migrations = array(
     'migrate_phase4.php',
     'migrate_phase5.php',
     'migrate_php_sessions.php',
+    'migrate_user_preferences.php',
+    'migrate_incident_reports.php',
+    'migrate_phase25.php',
 );
 
 try {

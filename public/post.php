@@ -400,7 +400,7 @@ if ($author_bio != '') {
                 FROM posts p
                 LEFT JOIN categories c ON c.id = p.category_id
                 WHERE p.category_id = :cid AND p.id != :id AND p.status = 'Published'
-                ORDER BY p.id DESC LIMIT 5");
+                ORDER BY p.created_at DESC, p.id DESC LIMIT 5");
             $rel->execute(array('cid' => $post['category_id'], 'id' => $post['id']));
             $related_list = $rel->fetchAll();
             if (count($related_list) == 0):
