@@ -10,7 +10,7 @@ Before editing locked files, confirm the change is intentional and test locally.
 
 | Path | Why locked |
 |------|------------|
-| `app/Core/*.php` | All business logic (auth, posts, admin, mail, …) |
+| `app/Models/*.php` | All business logic (auth, posts, admin, mail, …) |
 | `config/config.php` | Session, env, `requireLogin()`, `requireStaff()` |
 | `config/database.php` | PDO connection, SSL, timezone |
 | `database/schema.sql` | Base schema |
@@ -20,15 +20,25 @@ Before editing locked files, confirm the change is intentional and test locally.
 
 ---
 
-## ✅ Safe zones (UI / structure)
+## ✅ Safe zones (UI / structure) — customize freely
 
 | Path | Typical changes |
 |------|-----------------|
-| `app/Views/**` | HTML, layout, partials |
+| `app/Views/**` | HTML, layout, partials — **no business rules** |
 | `public/css/`, `public/js/` | Styles, UX |
+| `public/icons/` | Logo, favicon |
 | `app/Lang/*.php` | Translations |
 | `docs/**` | Documentation |
-| `.cursor/rules/**` | AI guardrails |
+
+### `public/` vs `app/Views/`
+
+| Folder | Role |
+|--------|------|
+| **`public/`** | URL entry + forms/POST (the “door”) |
+| **`app/Views/`** | HTML templates only (the “face”) |
+
+Example: `public/contact.php` handles submit → `Views/pages/contact.php` shows the form.  
+See [README — public vs Views](../README.md#public-vs-appviews--whats-the-difference).
 
 ---
 

@@ -2,7 +2,7 @@
   "version": 1,
   "description": "Village Connect logic lock manifest — paths where behavior changes require explicit intent and testing",
   "locked_paths": [
-    "app/Core/",
+    "app/Models/",
     "app/bootstrap/core.php",
     "config/",
     "database/schema.sql",

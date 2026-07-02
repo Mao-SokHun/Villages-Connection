@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Front controller for PHP built-in server and Vercel (api/index.php).
+ * Front controller for PHP built-in server.
  *
  * Local dev:
  *   php -S localhost:8080 -t public public/router.php
@@ -30,30 +30,50 @@ if ($path !== '/') {
 
     $candidate = $publicRoot . $path;
     if (is_file($candidate)) {
-        if (preg_match('/\.php$/i', $path) && (getenv('VERCEL') === '1' || getenv('VERCEL_ENV') !== false)) {
-            require $candidate;
-            return true;
-        }
         return false;
     }
 }
 
 require_once dirname(__DIR__) . '/app/bootstrap/paths.php';
-require_once APP_PATH . '/Core/route_registry.php';
+require_once APP_PATH . '/Models/route_registry.php';
+
+function route_dispatch_public($script)
+{
+    require_once ROOT_PATH . '/bootstrap.php';
+    require APP_PATH . '/Http/Controllers/Public/' . $script;
+}
+
+function route_dispatch_admin($script)
+{
+    require_once ROOT_PATH . '/bootstrap.php';
+    require APP_PATH . '/Http/Controllers/Admin/' . $script;
+}
+
+function route_dispatch_api($script)
+{
+    require_once ROOT_PATH . '/bootstrap-api.php';
+    require APP_PATH . '/Http/Controllers/Api/' . $script;
+}
+
+function route_dispatch_auth($script)
+{
+    require_once ROOT_PATH . '/bootstrap.php';
+    require APP_PATH . '/Http/Controllers/Auth/' . $script;
+}
 
 $publicRoutes = route_registry_public();
 $adminRoutes = route_registry_admin();
 
 foreach ($publicRoutes as $script => $prettyPath) {
     if ($path === $prettyPath) {
-        require $publicRoot . '/' . $script;
+        route_dispatch_public($script);
         return true;
     }
 }
 
 foreach ($adminRoutes as $script => $prettyPath) {
     if ($path === $prettyPath) {
-        require $publicRoot . '/admin/' . $script;
+        route_dispatch_admin($script);
         return true;
     }
 }
@@ -63,66 +83,67 @@ if ($feedParams !== null) {
     foreach ($feedParams as $feedKey => $feedValue) {
         $_GET[$feedKey] = $feedValue;
     }
-    require $publicRoot . '/index.php';
+    route_dispatch_public('index.php');
     return true;
 }
 
 if (preg_match('#^/post/([^/]+)/?$#', $path, $matches)) {
     $_GET['slug'] = rawurldecode($matches[1]);
-    require $publicRoot . '/post.php';
+    route_dispatch_public('post.php');
     return true;
 }
 
 if (preg_match('#^/profile/([0-9]+)/?$#', $path, $matches)) {
     $_GET['id'] = (int) $matches[1];
-    require $publicRoot . '/profile.php';
+    route_dispatch_public('profile.php');
     return true;
 }
 
 if ($path === '/post') {
-    require $publicRoot . '/post.php';
+    route_dispatch_public('post.php');
     return true;
 }
 
 if ($path === '/profile') {
-    require $publicRoot . '/profile.php';
+    route_dispatch_public('profile.php');
     return true;
 }
 
 if (preg_match('#^/api/([a-z0-9_-]+\.php)$#', $path, $matches)) {
-    $apiFile = $publicRoot . '/api/' . $matches[1];
+    $apiFile = APP_PATH . '/Http/Controllers/Api/' . $matches[1];
     if (is_file($apiFile)) {
-        require $apiFile;
+        route_dispatch_api($matches[1]);
         return true;
     }
 }
 
 if (preg_match('#^/auth/([a-z0-9_-]+\.php)$#', $path, $matches)) {
-    $authFile = $publicRoot . '/auth/' . $matches[1];
+    $authFile = APP_PATH . '/Http/Controllers/Auth/' . $matches[1];
     if (is_file($authFile)) {
-        require $authFile;
+        route_dispatch_auth($matches[1]);
         return true;
     }
 }
 
 if (preg_match('#^/admin/([a-z0-9_-]+\.php)$#', $path, $matches)) {
-    $adminFile = $publicRoot . '/admin/' . $matches[1];
+    $adminFile = APP_PATH . '/Http/Controllers/Admin/' . $matches[1];
     if (is_file($adminFile)) {
-        require $adminFile;
+        route_dispatch_admin($matches[1]);
         return true;
     }
 }
 
 if (preg_match('#^/([a-z0-9_-]+\.php)$#i', $path, $matches)) {
-    $scriptFile = $publicRoot . '/' . $matches[1];
-    if (is_file($scriptFile)) {
-        require $scriptFile;
+    $script = $matches[1];
+    $controllerFile = APP_PATH . '/Http/Controllers/Public/' . $script;
+    if (is_file($controllerFile)) {
+        route_dispatch_public($script);
         return true;
     }
 }
 
 if ($path === '/') {
-    require $publicRoot . '/index.php';
+    route_dispatch_public('index.php');
     return true;
 }
 
@@ -130,5 +151,5 @@ if (!defined('BOOTSTRAP_LIGHT_REQUEST')) {
     define('BOOTSTRAP_LIGHT_REQUEST', true);
 }
 http_response_code(404);
-require $publicRoot . '/404.php';
+route_dispatch_public('404.php');
 return true;

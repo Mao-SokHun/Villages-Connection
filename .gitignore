@@ -1,6 +1,4 @@
 .env
-docker/certs/*.key
-docker/certs/*.crt
 storage/backups/*.sql.gz
 storage/cache/*.json
 public/uploads/*
@@ -12,5 +10,3 @@ public/uploads/videos/*
 composer.phar
 composer-setup.php
 .phpunit.cache/
-
-.vercel

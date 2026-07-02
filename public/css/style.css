@@ -6127,3 +6127,348 @@ body.has-reading-progress { scroll-padding-top: 92px; }
         grid-column: auto;
     }
 }
+
+/* ============================================================
+   PROFESSIONAL POLISH — Enhanced Styles
+   ============================================================ */
+
+/* ── Scroll Progress Bar ── */
+#scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, #818cf8, #38bdf8, #2dd4bf);
+    z-index: 9999;
+    border-radius: 0 2px 2px 0;
+    transition: width 0.08s linear;
+    box-shadow: 0 0 10px rgba(129, 140, 248, 0.5);
+    pointer-events: none;
+}
+[data-theme="light"] #scroll-progress {
+    background: linear-gradient(90deg, #6366f1, #0ea5e9, #14b8a6);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.45);
+}
+
+/* ── Scroll Reveal Animations ── */
+.reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: opacity, transform;
+}
+.reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ── Navbar Shrink On Scroll ── */
+.navbar-custom.navbar-scrolled {
+    padding: 0.3rem 0;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+}
+[data-theme="light"] .navbar-custom.navbar-scrolled {
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1) !important;
+}
+
+/* ── Page Fade In ── */
+@keyframes pageFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);  }
+}
+body > .container > *:first-child,
+.site-public .container > .row:first-child {
+    animation: pageFadeIn 0.4s ease both;
+}
+
+/* ── Skeleton Shimmer Loader ── */
+@keyframes shimmer {
+    0%   { background-position: -700px 0; }
+    100% { background-position: 700px 0; }
+}
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.09) 50%,
+        rgba(255,255,255,0.04) 75%
+    );
+    background-size: 700px 100%;
+    animation: shimmer 1.6s infinite linear;
+    border-radius: 8px;
+}
+[data-theme="light"] .skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(15,23,42,0.04) 25%,
+        rgba(15,23,42,0.09) 50%,
+        rgba(15,23,42,0.04) 75%
+    );
+    background-size: 700px 100%;
+}
+.skeleton-card  { height: 220px; border-radius: var(--radius-md); }
+.skeleton-line  { height: 13px; margin-bottom: 0.6rem; border-radius: 4px; }
+.skeleton-line:last-child { width: 60%; }
+.skeleton-avatar { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Button Gradient Shimmer on Hover ── */
+.btn-gradient {
+    position: relative;
+    overflow: hidden;
+}
+.btn-gradient::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 55%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.6s ease;
+    pointer-events: none;
+}
+.btn-gradient:hover::after {
+    left: 160%;
+}
+
+/* ── Enhanced Card Hover Glow ── */
+.news-card.glass-panel:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg), 0 0 28px rgba(129, 140, 248, 0.12);
+}
+
+/* ── 404 Page – Animated Number ── */
+.error-404-number {
+    font-family: var(--font-heading);
+    font-size: clamp(5rem, 16vw, 10rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    display: block;
+    background: linear-gradient(135deg, #818cf8 0%, #38bdf8 55%, #2dd4bf 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: errorGlow 3s ease-in-out infinite;
+}
+[data-theme="light"] .error-404-number {
+    background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 55%, #14b8a6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+@keyframes errorGlow {
+    0%,100% { filter: drop-shadow(0 0 18px rgba(129,140,248,0.35)); }
+    50%      { filter: drop-shadow(0 0 36px rgba(56,189,248,0.55)); }
+}
+.error-404-compass {
+    font-size: 3.5rem;
+    display: block;
+    animation: floatIcon 3.5s ease-in-out infinite;
+    background: linear-gradient(135deg, #fbbf24, #34d399);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+@keyframes floatIcon {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+}
+
+/* ── About Page Stats Grid ── */
+.about-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+@media (max-width: 575px) {
+    .about-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.about-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.4rem 0.85rem;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border-soft);
+    backdrop-filter: blur(12px);
+    gap: 0.4rem;
+    transition: all 0.3s ease;
+}
+.about-stat-card:hover {
+    border-color: rgba(129,140,248,0.35);
+    background: rgba(129,140,248,0.07);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(129,140,248,0.12);
+}
+[data-theme="light"] .about-stat-card {
+    background: rgba(255,255,255,0.7);
+    border-color: rgba(15,23,42,0.08);
+}
+.about-stat-icon {
+    width: 46px; height: 46px;
+    border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    background: var(--gradient-accent);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(129,140,248,0.28);
+    margin-bottom: 0.2rem;
+}
+.about-stat-value {
+    font-family: var(--font-heading);
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.about-stat-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+}
+
+/* ── About Icon Ring ── */
+.about-icon-ring {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 3rem;
+    color: #fff;
+    background: var(--gradient-accent);
+    box-shadow: 0 0 0 16px rgba(129,140,248,0.1),
+                0 0 0 32px rgba(129,140,248,0.05),
+                0 20px 48px rgba(129,140,248,0.3);
+    animation: ringPulse 4s ease-in-out infinite;
+}
+@keyframes ringPulse {
+    0%,100% {
+        box-shadow: 0 0 0 16px rgba(129,140,248,0.1),
+                    0 0 0 32px rgba(129,140,248,0.05),
+                    0 20px 48px rgba(129,140,248,0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 20px rgba(56,189,248,0.12),
+                    0 0 0 40px rgba(56,189,248,0.06),
+                    0 24px 56px rgba(56,189,248,0.35);
+    }
+}
+
+/* ── Footer Social Links ── */
+.footer-social-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+    flex-wrap: wrap;
+}
+.footer-social-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 35px; height: 35px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--glass-border-soft);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.25s ease;
+}
+.footer-social-btn:hover {
+    color: #fff;
+    background: var(--gradient-accent);
+    border-color: transparent;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(129,140,248,0.3);
+}
+[data-theme="light"] .footer-social-btn {
+    background: rgba(15,23,42,0.04);
+    border-color: rgba(15,23,42,0.1);
+}
+[data-theme="light"] .footer-social-btn:hover {
+    color: #fff;
+    background: var(--gradient-accent);
+    border-color: transparent;
+}
+
+/* ── Footer Top Accent Border ── */
+.footer-glass::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #818cf8 25%, #38bdf8 50%, #2dd4bf 75%, transparent 100%);
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+/* ── Mobile Tab Active Glow ── */
+.mobile-tab-item.is-active .mobile-tab-icon {
+    background: rgba(129,140,248,0.14);
+    border-radius: 12px;
+}
+.mobile-tab-item.is-active .mobile-tab-icon i {
+    color: #818cf8;
+    filter: drop-shadow(0 0 5px rgba(129,140,248,0.5));
+}
+[data-theme="light"] .mobile-tab-item.is-active .mobile-tab-icon { background: rgba(99,102,241,0.1); }
+[data-theme="light"] .mobile-tab-item.is-active .mobile-tab-icon i { color: #4f46e5; }
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(129,140,248,0.22); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(129,140,248,0.42); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.18); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.38); }
+
+/* ── Stagger reveal children ── */
+.stagger-reveal > *:nth-child(1) { transition-delay: 0.05s; }
+.stagger-reveal > *:nth-child(2) { transition-delay: 0.12s; }
+.stagger-reveal > *:nth-child(3) { transition-delay: 0.19s; }
+.stagger-reveal > *:nth-child(4) { transition-delay: 0.26s; }
+.stagger-reveal > *:nth-child(5) { transition-delay: 0.33s; }
+.stagger-reveal > *:nth-child(6) { transition-delay: 0.40s; }
+
+/* ── Empty state float animation ── */
+.empty-state > i:first-child,
+.empty-state > .fa-solid:first-child {
+    display: inline-block;
+    animation: floatIcon 3.5s ease-in-out infinite;
+}
+
+/* ── Back to top hover polish ── */
+.back-to-top:hover {
+    box-shadow: 0 8px 24px rgba(129,140,248,0.4);
+}
+
+/* ── Prefers Reduced Motion Overrides ── */
+@media (prefers-reduced-motion: reduce) {
+    .reveal, .reveal.is-visible {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+    .btn-gradient::after,
+    .skeleton { animation: none !important; }
+    .about-icon-ring,
+    .error-404-number,
+    .error-404-compass,
+    .empty-state > i { animation: none !important; }
+}

@@ -22,3 +22,6 @@ if (!defined('CONFIG_PATH')) {
 if (!defined('DATABASE_PATH')) {
     define('DATABASE_PATH', ROOT_PATH . '/database');
 }
+if (!defined('MODELS_PATH')) {
+    define('MODELS_PATH', APP_PATH . '/Models');
+}

@@ -123,7 +123,7 @@ Reads POST data and calls `parse_video_input()`:
 
 ## 3. Validate & Parse YouTube URL
 
-**File:** `app/Core/helpers.php`
+**File:** `app/Models/helpers.php`
 
 ### `parse_video_input()` — save-time validation
 
@@ -134,7 +134,7 @@ When `video_type === 'youtube'`:
 - Must contain `youtube.com` or `youtu.be`
 - Returns `['ok' => true, 'type' => 'youtube', 'url' => $url]`
 
-```138:157:app/Core/helpers.php
+```138:157:app/Models/helpers.php
     if ($video_type == 'youtube') {
         $url = trim($youtube_url);
 
@@ -162,7 +162,7 @@ When `video_type === 'youtube'`:
 
 Supports: `youtu.be/ID`, `?v=ID`, `/embed/ID`
 
-```186:203:app/Core/helpers.php
+```186:203:app/Models/helpers.php
 function youtube_video_id($url)
 {
     if ($url == '') {
@@ -185,7 +185,7 @@ function youtube_video_id($url)
 
 ### `youtube_embed_url()` — for iframe on post page
 
-```205:214:app/Core/helpers.php
+```205:214:app/Models/helpers.php
 function youtube_embed_url($url)
 {
     $id = youtube_video_id($url);
@@ -200,7 +200,7 @@ function youtube_embed_url($url)
 
 ### `youtube_thumbnail_url()` — for card preview image
 
-```216:225:app/Core/helpers.php
+```216:225:app/Models/helpers.php
 function youtube_thumbnail_url($url)
 {
     $id = youtube_video_id($url);
@@ -225,7 +225,7 @@ Priority:
 2. YouTube thumbnail (`img.youtube.com`)
 3. Empty → placeholder icon
 
-```236:257:app/Core/helpers.php
+```236:257:app/Models/helpers.php
 function post_card_media($post)
 {
     $result = array('url' => '', 'external' => false, 'alt' => '');
@@ -315,7 +315,7 @@ When `video_type == 'youtube'`, renders a 16:9 iframe:
 
 ### `post_has_video()` helper
 
-```250:261:app/Core/helpers.php
+```250:261:app/Models/helpers.php
 function post_has_video($post)
 {
     if (!isset($post['video_url']) || $post['video_url'] == '') {
@@ -336,9 +336,9 @@ function post_has_video($post)
 
 YouTube iframe and thumbnails require CSP permissions:
 
-**File:** `app/Core/security.php`
+**File:** `app/Models/security.php`
 
-```13:13:app/Core/security.php
+```13:13:app/Models/security.php
     header("Content-Security-Policy: ... img-src 'self' data: https:; frame-src https://www.youtube.com; ...");
 ```
 
@@ -421,12 +421,12 @@ if ($post['video_type'] == 'youtube') {
 |------|---------|
 | `database/schema.sql` | `video_url`, `video_type` columns |
 | `public/admin/posts.php` | Form, save, JS toggle |
-| `app/Core/helpers.php` | All YouTube helper functions |
+| `app/Models/helpers.php` | All YouTube helper functions |
 | `app/Views/partials/news-card.php` | Card thumbnail + video badge |
 | `public/index.php` | Home feed cards |
 | `public/profile.php` | Profile posts query + cards |
 | `public/post.php` | YouTube iframe embed |
-| `app/Core/security.php` | CSP for iframe + external images |
+| `app/Models/security.php` | CSP for iframe + external images |
 
 ---
 

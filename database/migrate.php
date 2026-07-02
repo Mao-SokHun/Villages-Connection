@@ -36,6 +36,8 @@ $migrations = array(
     'migrate_user_preferences.php',
     'migrate_incident_reports.php',
     'migrate_phase25.php',
+    'migrate_add_posts_index.php',
+    'migrate_missing_indexes.php',
 );
 
 try {

@@ -1,13 +1,19 @@
 <?php
 
 /**
- * Core module loader — order is fixed; do not reorder (logic lock).
- * Edit app/Core/*.php for business logic; edit this file only to register new modules.
+ * Model module loader — order is fixed; do not reorder (logic lock).
+ * Logic files live in app/Models/*.php — edit those for business rules.
  */
 
+function bootstrap_models_path($file)
+{
+    return APP_PATH . '/Models/' . ltrim($file, '/');
+}
+
+/** @deprecated Use bootstrap_models_path() */
 function bootstrap_core_path($file)
 {
-    return APP_PATH . '/Core/' . ltrim($file, '/');
+    return bootstrap_models_path($file);
 }
 
 function bootstrap_load_core_modules($lite = false)
@@ -40,6 +46,6 @@ function bootstrap_load_core_modules($lite = false)
     $modules[] = 'push.php';
 
     foreach ($modules as $file) {
-        require_once bootstrap_core_path($file);
+        require_once bootstrap_models_path($file);
     }
 }

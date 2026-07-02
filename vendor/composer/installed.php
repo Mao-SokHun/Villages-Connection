@@ -3,7 +3,7 @@
         'name' => 'village-connect/cms',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '2f09404478f61c8043fa39e989dac0e099f8765e',
+        'reference' => 'ad5febf8757b4d32d1a8f8622f482bd3e79435ae',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -587,7 +587,7 @@
         'village-connect/cms' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '2f09404478f61c8043fa39e989dac0e099f8765e',
+            'reference' => 'ad5febf8757b4d32d1a8f8622f482bd3e79435ae',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

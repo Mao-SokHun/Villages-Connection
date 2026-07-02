@@ -8,10 +8,11 @@ if (file_exists(ROOT_PATH . '/vendor/autoload.php')) {
 }
 require_once CONFIG_PATH . '/database.php';
 
-app_start_session($pdo);
+// app_start_session moved down after core modules load
 
 require_once APP_PATH . '/bootstrap/core.php';
 bootstrap_load_core_modules(false);
+app_start_session($pdo); // start session after helpers are loaded
 
 init_locale();
 

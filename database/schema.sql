@@ -66,6 +66,8 @@ CREATE TABLE posts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_posts_archive_lookup ON posts(status, archive_on_expiry, expires_at);
+
 CREATE TABLE community_challenges (
     id SERIAL PRIMARY KEY,
     title VARCHAR(180) NOT NULL,

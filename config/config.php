@@ -109,9 +109,9 @@ function app_resolve_timezone()
 define('APP_TIMEZONE', app_resolve_timezone());
 date_default_timezone_set(APP_TIMEZONE);
 
-require_once __DIR__ . '/../app/Core/rate_limit.php';
-require_once __DIR__ . '/../app/Core/security.php';
-require_once __DIR__ . '/../app/Core/session.php';
+require_once __DIR__ . '/../app/Models/rate_limit.php';
+require_once __DIR__ . '/../app/Models/security.php';
+require_once __DIR__ . '/../app/Models/session.php';
 normalize_https_request();
 
 $db_host = env_var('DB_HOST', '127.0.0.1');
@@ -313,5 +313,5 @@ function requireAdmin()
     }
 }
 
-require_once __DIR__ . '/../app/Core/routes.php';
+require_once __DIR__ . '/../app/Models/routes.php';
 send_security_headers();

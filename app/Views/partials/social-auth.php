@@ -1,5 +1,5 @@
 <?php
-require_once APP_PATH . '/Core/oauth.php';
+require_once APP_PATH . '/Models/oauth.php';
 
 $show_social = oauth_any_configured();
 if (!$show_social) {
