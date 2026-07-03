@@ -17,6 +17,7 @@ try {
     if (!$is_serverless && ($persistent === 'true' || $persistent === '1' || ($persistent !== 'false' && !$is_local_db))) {
         $options[PDO::ATTR_PERSISTENT] = true;
     }
+    global $pdo;
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
