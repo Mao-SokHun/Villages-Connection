@@ -21,6 +21,10 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 # Allow overrides and set router.php as the default index and fallback
 RUN echo "<Directory ${APACHE_DOCUMENT_ROOT}>\n\tAllowOverride All\n\tRequire all granted\n\tDirectoryIndex router.php\n\tFallbackResource /router.php\n</Directory>" >> /etc/apache2/apache2.conf
 
+# Configure Apache to listen on $PORT (needed for Render)
+RUN sed -s -i -e "s/80/\${PORT}/" /etc/apache2/ports.conf
+RUN sed -s -i -e "s/80/\${PORT}/" /etc/apache2/sites-available/*.conf
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
