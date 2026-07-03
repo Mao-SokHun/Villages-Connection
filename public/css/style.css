@@ -6472,3 +6472,72 @@ body > .container > *:first-child,
     .error-404-compass,
     .empty-state > i { animation: none !important; }
 }
+
+/* ============================================================
+ * Emoji Reactions
+ * ============================================================ */
+.reaction-bar { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.reaction-picker-wrap { display: flex; gap: .35rem; flex-wrap: wrap; }
+.reaction-btn {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .35rem .6rem; border-radius: 2rem;
+    border: 1px solid var(--glass-border-soft);
+    background: var(--bg-card); cursor: pointer;
+    font-size: .95rem; transition: transform .15s, background .15s, border-color .15s;
+    line-height: 1;
+}
+.reaction-btn:hover { transform: scale(1.18); background: rgba(255,255,255,.1); border-color: var(--glass-border); }
+.reaction-btn.active { background: rgba(129,140,248,.18); border-color: var(--accent-primary); }
+.reaction-emoji { font-size: 1.2rem; }
+.reaction-count { font-size: .78rem; color: var(--text-secondary); min-width: 10px; }
+.reaction-btn.active .reaction-count { color: var(--accent-primary); font-weight: 600; }
+
+/* ============================================================
+ * Polls
+ * ============================================================ */
+.poll-block { border-radius: var(--radius-sm); }
+.poll-option {
+    position: relative; overflow: hidden;
+    border-radius: var(--radius-sm); margin-bottom: .5rem;
+    border: 1px solid var(--glass-border-soft);
+    background: var(--bg-card); cursor: pointer;
+    transition: border-color .2s;
+    min-height: 40px;
+}
+.poll-option:hover { border-color: var(--glass-border); }
+.poll-option.voted { border-color: var(--success); }
+.poll-option-bar {
+    position: absolute; top: 0; left: 0; bottom: 0;
+    background: linear-gradient(90deg, rgba(129,140,248,.22), rgba(56,189,248,.12));
+    transition: width .4s ease; border-radius: var(--radius-sm);
+}
+.poll-option-content {
+    position: relative; z-index: 1;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .55rem .85rem;
+}
+.poll-option-label { color: var(--text-primary); font-size: .9rem; }
+.poll-option-pct { color: var(--text-secondary); font-size: .82rem; font-weight: 600; }
+
+/* ============================================================
+ * @Mention autocomplete
+ * ============================================================ */
+.mention-dropdown {
+    position: absolute; z-index: 9999;
+    background: var(--dropdown-bg); border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm); box-shadow: var(--shadow-md);
+    max-height: 180px; overflow-y: auto; min-width: 200px;
+}
+.mention-item {
+    display: block; padding: .45rem .85rem;
+    color: var(--text-primary); text-decoration: none; font-size: .88rem;
+    cursor: pointer; transition: background .12s;
+}
+.mention-item:hover, .mention-item.active { background: rgba(255,255,255,.08); }
+
+/* ============================================================
+ * Event card
+ * ============================================================ */
+.event-card { transition: border-color .2s, transform .18s; color: inherit; }
+.event-card:hover { transform: translateY(-2px); border-color: var(--glass-border) !important; }
+

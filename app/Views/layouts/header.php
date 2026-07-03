@@ -196,6 +196,11 @@ if (!isset($canonical_url) || $canonical_url == '') {
                     </a>
                 </li>
                 <?php endif; ?>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-custom <?php if ($current_page == 'events.php') echo 'active'; ?>" href="<?php echo app_url('events.php'); ?>">
+                        <i class="fa-solid fa-calendar-star"></i><span>Events</span>
+                    </a>
+                </li>
                 <li class="nav-item dropdown nav-support-dropdown">
                     <a class="nav-link nav-link-custom dropdown-toggle <?php if ($is_support_page) echo 'active'; ?>" href="#" id="navbarSupport" role="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-auto-close="true" aria-expanded="false">
                         <i class="fa-solid fa-life-ring"></i><span><?php echo __('nav.support'); ?></span>
@@ -371,6 +376,7 @@ if (!isset($canonical_url) || $canonical_url == '') {
                             <?php if ($show_user_menu_bookmarks): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('bookmarks.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-bookmark"></i></span><span class="dropdown-item-text"><?php echo __('nav.bookmarks'); ?></span></a></li>
                             <?php endif; ?>
+                            <li><a class="dropdown-item-custom <?php if ($current_page == 'messages.php') echo 'active'; ?>" href="<?php echo app_url('messages.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-comments"></i></span><span class="dropdown-item-text">Messages</span></a></li>
                             <?php if ($show_user_menu_notifications): ?>
                             <li><a class="dropdown-item-custom" href="<?php echo app_url('notifications.php'); ?>"><span class="dropdown-item-icon"><i class="fa-solid fa-bell"></i></span><span class="dropdown-item-text"><?php echo __('nav.notifications'); ?></span></a></li>
                             <?php endif; ?>

@@ -34,6 +34,8 @@ function route_registry_public()
         'resend-verification.php' => '/resend-verification',
         'support.php' => '/support',
         'post.php' => '/post',
+        'messages.php' => '/messages',
+        'events.php' => '/events',
     );
 }
 
@@ -56,6 +58,8 @@ function route_registry_admin()
         'media.php' => '/admin/media',
         'my-media.php' => '/admin/my-media',
         'my-comments.php' => '/admin/my-comments',
+        'events.php' => '/admin/events',
+        'polls.php' => '/admin/polls',
     );
 }
 
@@ -87,6 +91,8 @@ function route_registry_named()
         'verify-email' => 'verify-email.php',
         'resend-verification' => 'resend-verification.php',
         'support' => 'support.php',
+        'messages' => 'messages.php',
+        'events' => 'events.php',
         'admin' => 'admin/dashboard.php',
         'admin.posts' => 'admin/posts.php',
         'admin.categories' => 'admin/categories.php',
@@ -103,6 +109,8 @@ function route_registry_named()
         'admin.media' => 'admin/media.php',
         'admin.my-media' => 'admin/my-media.php',
         'admin.my-comments' => 'admin/my-comments.php',
+        'admin.events' => 'admin/events.php',
+        'admin.polls' => 'admin/polls.php',
     );
 }
 

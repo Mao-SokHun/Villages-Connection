@@ -38,6 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
     registerServiceWorker();
     initWebPush();
     initRealtimeBadges();
+    initEmojiReactions();
+    initPollVoting();
+    initMentionAutocomplete();
 });
 
 function updateNavNotifyBadge(count) {
@@ -1893,3 +1896,148 @@ function initWebPush() {
         setBtnState(false);
     });
 }
+
+/* ============================================================
+ * Emoji Reactions
+ * ============================================================ */
+function initEmojiReactions() {
+    var bar = document.querySelector('.reaction-bar');
+    if (!bar) return;
+    var postId = bar.dataset.postId;
+    var csrf   = document.querySelector('meta[name="csrf-token"]').content;
+
+    bar.querySelectorAll('.reaction-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (btn.dataset.requireLogin) {
+                showToast('Reactions', appI18n('sign_in', 'Please sign in to react'), 'warning');
+                return;
+            }
+            var reaction = btn.dataset.reaction;
+            var fd = new FormData();
+            fd.append('post_id', postId);
+            fd.append('reaction', reaction);
+            fd.append('csrf_token', csrf);
+            fetch(window.APP_BASE + 'api/react.php', { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.ok) return;
+                    // Update all counts
+                    bar.querySelectorAll('.reaction-btn').forEach(function(b) {
+                        var r2 = b.dataset.reaction;
+                        var countEl = document.getElementById('rxn-count-' + r2);
+                        if (countEl) {
+                            var n = d.counts[r2] || 0;
+                            countEl.textContent = n > 0 ? n : '';
+                        }
+                        b.classList.toggle('active', d.my_reaction === r2);
+                    });
+                });
+        });
+    });
+}
+
+/* ============================================================
+ * Poll Voting
+ * ============================================================ */
+function initPollVoting() {
+    var pollBlock = document.getElementById('post-poll');
+    if (!pollBlock) return;
+    var pollId = pollBlock.dataset.pollId;
+    var csrf   = document.querySelector('meta[name="csrf-token"]').content;
+
+    pollBlock.querySelectorAll('.poll-option[role="button"]').forEach(function(opt) {
+        opt.addEventListener('click', function() {
+            var optId = opt.dataset.optionId;
+            var fd = new FormData();
+            fd.append('action', 'vote');
+            fd.append('poll_id', pollId);
+            fd.append('option_id', optId);
+            fd.append('csrf_token', csrf);
+            fetch(window.APP_BASE + 'api/poll.php', { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.ok) { showToast('Poll', d.error || 'Vote failed', 'error'); return; }
+                    // Calculate total
+                    var total = 0;
+                    for (var k in d.counts) { total += d.counts[k]; }
+                    // Update bars and percentages
+                    pollBlock.querySelectorAll('.poll-option').forEach(function(o) {
+                        var oid = parseInt(o.dataset.optionId, 10);
+                        var votes = d.counts[oid] || 0;
+                        var pct = total > 0 ? Math.round(votes / total * 100) : 0;
+                        var bar2 = o.querySelector('.poll-option-bar');
+                        if (bar2) bar2.style.width = pct + '%';
+                        var pctEl = document.getElementById('poll-pct-' + oid);
+                        if (pctEl) pctEl.textContent = pct + '%';
+                        o.classList.toggle('voted', d.my_votes.indexOf(oid) !== -1);
+                    });
+                    var totalEl = document.getElementById('poll-total-votes');
+                    if (totalEl) totalEl.textContent = total;
+                });
+        });
+        opt.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); opt.click(); }
+        });
+    });
+}
+
+/* ============================================================
+ * @Mention autocomplete in comment textarea
+ * ============================================================ */
+function initMentionAutocomplete() {
+    var textarea = document.getElementById('comment-content');
+    if (!textarea) return;
+
+    var dropdown = document.createElement('div');
+    dropdown.className = 'mention-dropdown';
+    dropdown.style.display = 'none';
+    textarea.parentNode.style.position = 'relative';
+    textarea.parentNode.appendChild(dropdown);
+
+    var timer;
+    var mentionStart = -1;
+
+    textarea.addEventListener('input', function() {
+        var val  = textarea.value;
+        var pos  = textarea.selectionStart;
+        var chunk = val.slice(0, pos);
+        var match = chunk.match(/@([a-zA-Z0-9_\-]*)$/);
+        if (!match) {
+            dropdown.style.display = 'none';
+            mentionStart = -1;
+            return;
+        }
+        mentionStart = pos - match[0].length;
+        var q = match[1];
+        clearTimeout(timer);
+        if (q.length < 1) { dropdown.style.display = 'none'; return; }
+        timer = setTimeout(function() {
+            fetch(window.APP_BASE + 'api/notifications.php?action=search_users&q=' + encodeURIComponent(q))
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    dropdown.innerHTML = '';
+                    if (!d.users || d.users.length === 0) { dropdown.style.display = 'none'; return; }
+                    d.users.slice(0, 6).forEach(function(u) {
+                        var item = document.createElement('div');
+                        item.className = 'mention-item';
+                        item.textContent = '@' + u.name;
+                        item.addEventListener('mousedown', function(e) {
+                            e.preventDefault();
+                            var before = textarea.value.slice(0, mentionStart);
+                            var after  = textarea.value.slice(pos);
+                            textarea.value = before + '@' + u.name + ' ' + after;
+                            dropdown.style.display = 'none';
+                            textarea.focus();
+                        });
+                        dropdown.appendChild(item);
+                    });
+                    dropdown.style.display = 'block';
+                });
+        }, 250);
+    });
+
+    textarea.addEventListener('blur', function() {
+        setTimeout(function() { dropdown.style.display = 'none'; }, 200);
+    });
+}
+

@@ -78,6 +78,12 @@ if (isAdmin() && isset($pdo)) {
         <a href="<?php echo admin_area_url('challenges.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'challenges') echo 'active'; ?>">
             <i class="fa-solid fa-trophy"></i><span><?php echo __('admin.challenges'); ?></span>
         </a>
+        <a href="<?php echo admin_area_url('events.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'events') echo 'active'; ?>">
+            <i class="fa-solid fa-calendar-star"></i><span>Events</span>
+        </a>
+        <a href="<?php echo admin_area_url('polls.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'polls') echo 'active'; ?>">
+            <i class="fa-solid fa-square-poll-vertical"></i><span>Polls</span>
+        </a>
         <a href="<?php echo admin_area_url('messages.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'messages') echo 'active'; ?><?php if ($admin_counts['messages'] > 0) echo ' has-unread'; ?>" data-admin-tab="messages">
             <i class="fa-solid fa-envelope"></i><span><?php echo __('admin.messages'); ?></span>
             <span class="dash-badge" data-admin-badge="messages"<?php if ($admin_counts['messages'] <= 0) echo ' hidden'; ?>><?php echo (int) $admin_counts['messages']; ?></span>

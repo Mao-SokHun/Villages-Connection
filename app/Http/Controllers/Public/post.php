@@ -33,6 +33,21 @@ if (isLoggedIn()) {
     $liked = user_liked_post($pdo, (int) $post['id'], (int) $_SESSION['user_id']);
 }
 
+// Emoji reactions
+$post_reactions  = get_post_reactions($pdo, (int) $post['id']);
+$user_reaction   = isLoggedIn() ? get_user_post_reaction($pdo, (int) $post['id'], (int) $_SESSION['user_id']) : null;
+
+// Poll attached to post
+$post_poll       = get_post_poll($pdo, (int) $post['id']);
+$poll_vote_counts = array();
+$user_poll_votes  = array();
+if ($post_poll) {
+    $poll_vote_counts = get_poll_vote_counts($pdo, (int) $post_poll['id']);
+    if (isLoggedIn()) {
+        $user_poll_votes = get_user_poll_votes($pdo, (int) $post_poll['id'], (int) $_SESSION['user_id']);
+    }
+}
+
 $is_post_owner = isLoggedIn() && (int) $_SESSION['user_id'] == (int) $post['user_id'];
 
 $comment_errors = array();
@@ -85,6 +100,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['comment_content']) && 
             notify_post_author_on_comment($pdo, $post['id'], $_SESSION['user_name'], $slug, $comment_status == 'pending', (int) $result['id']);
             if ($parent_id > 0 && $comment_status == 'approved') {
                 notify_comment_reply($pdo, $parent_id, $_SESSION['user_name'], $slug, $post['title'], (int) $result['id']);
+            }
+            if ($comment_status == 'approved') {
+                notify_mentioned_users($pdo, $comment_content, $_SESSION['user_name'], $slug, $post['title'], (int) $result['id'], (int) $_SESSION['user_id']);
             }
             if ($comment_status == 'pending') {
                 notify_admins_pending_comment($pdo, $post['id'], $_SESSION['user_name']);
@@ -276,7 +294,61 @@ if ($author_bio != '') {
                 </div>
             </div>
 
-            <div class="post-actions-bar mt-4 pt-4 border-top border-secondary">
+            <?php if ($post_poll): ?>
+            <!-- Poll -->
+            <div class="poll-block glass-panel-sm p-4 mt-4"
+                 id="post-poll"
+                 data-poll-id="<?php echo (int) $post_poll['id']; ?>"
+                 data-multiple="<?php echo $post_poll['is_multiple'] ? '1' : '0'; ?>">
+                <h6 class="text-white mb-3"><i class="fa-solid fa-square-poll-vertical text-warning me-2"></i><?php echo htmlspecialchars($post_poll['question']); ?></h6>
+                <?php
+                $total_votes = array_sum($poll_vote_counts);
+                foreach ($post_poll['options'] as $opt):
+                    $opt_id   = (int) $opt['id'];
+                    $votes    = isset($poll_vote_counts[$opt_id]) ? (int) $poll_vote_counts[$opt_id] : 0;
+                    $pct      = $total_votes > 0 ? round($votes / $total_votes * 100) : 0;
+                    $voted    = in_array($opt_id, $user_poll_votes);
+                    $is_ended = !empty($post_poll['ends_at']) && strtotime($post_poll['ends_at']) < time();
+                ?>
+                <div class="poll-option <?php if ($voted) echo 'voted'; ?>"
+                     data-option-id="<?php echo $opt_id; ?>"
+                     <?php if (isLoggedIn() && !$is_ended) echo 'role="button" tabindex="0"'; ?>>
+                    <div class="poll-option-bar" style="width:<?php echo $pct; ?>%"></div>
+                    <div class="poll-option-content">
+                        <span class="poll-option-label"><?php if ($voted): ?><i class="fa-solid fa-check text-success me-1"></i><?php endif; ?><?php echo htmlspecialchars($opt['label']); ?></span>
+                        <span class="poll-option-pct" id="poll-pct-<?php echo $opt_id; ?>"><?php echo $pct; ?>%</span>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <div class="text-secondary small mt-2">
+                    <span id="poll-total-votes"><?php echo $total_votes; ?></span> vote<?php echo $total_votes !== 1 ? 's' : ''; ?>
+                    <?php if (!empty($post_poll['ends_at'])): ?>
+                    · Ends <?php echo date('M j, Y', strtotime($post_poll['ends_at'])); ?>
+                    <?php endif; ?>
+                    <?php if (!isLoggedIn()): ?> · <a href="<?php echo app_url('login.php'); ?>">Sign in to vote</a><?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Emoji Reactions -->
+            <div class="reaction-bar mt-4 pt-3 border-top border-secondary border-opacity-25"
+                 data-post-id="<?php echo (int) $post['id']; ?>"
+                 data-user-reaction="<?php echo htmlspecialchars($user_reaction ?? ''); ?>">
+                <div class="reaction-picker-wrap">
+                    <?php foreach (allowed_reactions() as $rxn): ?>
+                    <button type="button"
+                            class="reaction-btn <?php if ($user_reaction === $rxn) echo 'active'; ?>"
+                            data-reaction="<?php echo $rxn; ?>"
+                            title="<?php echo reaction_label($rxn); ?>"
+                            <?php if (!isLoggedIn()) echo 'data-require-login="1"'; ?>>
+                        <span class="reaction-emoji"><?php echo reaction_emoji($rxn); ?></span>
+                        <span class="reaction-count" id="rxn-count-<?php echo $rxn; ?>"><?php echo isset($post_reactions[$rxn]) ? (int) $post_reactions[$rxn] : ''; ?></span>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="post-actions-bar mt-3">
                 <button type="button" class="btn btn-outline-custom btn-bookmark <?php if ($bookmarked) echo 'is-bookmarked'; ?>" id="btn-bookmark" data-post-id="<?php echo (int) $post['id']; ?>" data-bookmarked="<?php echo $bookmarked ? '1' : '0'; ?>" data-require-login="<?php echo isLoggedIn() ? '0' : '1'; ?>">
                     <i class="fa-<?php echo $bookmarked ? 'solid' : 'regular'; ?> fa-bookmark"></i> <?php echo __('bookmarks.save'); ?>
                 </button>

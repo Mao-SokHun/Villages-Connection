@@ -44,6 +44,9 @@ function bootstrap_load_core_modules($lite = false)
 
     $modules[] = 'features.php';
     $modules[] = 'push.php';
+    $modules[] = 'messaging.php';
+    $modules[] = 'events.php';
+    $modules[] = 'extras.php';
 
     foreach ($modules as $file) {
         require_once bootstrap_models_path($file);

@@ -21,6 +21,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit;
     }
 
+    if (isset($_POST['generate_vapid'])) {
+        require_once APP_PATH . '/Models/push.php';
+        $keys = push_generate_vapid_keys();
+        if ($keys) {
+            $msg = 'VAPID Keys generated successfully. Add these to your .env file:<br><br>';
+            $msg .= '<code>VAPID_PUBLIC_KEY=' . htmlspecialchars($keys['publicKey']) . '</code><br>';
+            $msg .= '<code>VAPID_PRIVATE_KEY=' . htmlspecialchars($keys['privateKey']) . '</code>';
+            setFlashMessage('success', $msg);
+        } else {
+            setFlashMessage('danger', 'Could not generate VAPID keys. Ensure the WebPush package is installed.');
+        }
+        header('Location: ' . admin_area_url('settings.php'));
+        exit;
+    }
+
     $keys = array(
         'registration_enabled',
         'require_email_verification',
@@ -172,6 +187,15 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
                 <a href="<?php echo admin_area_url('activity.php'); ?>" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-clock-rotate-left"></i> Activity Log</a>
                 <a href="<?php echo app_url('sitemap.php'); ?>" target="_blank" class="btn btn-outline-custom btn-sm"><i class="fa-solid fa-sitemap"></i> View Sitemap</a>
             </div>
+        </div>
+        <div class="glass-panel p-4 mb-4">
+            <h5 class="text-white mb-3"><i class="fa-solid fa-bell text-warning me-2"></i>Push Notifications</h5>
+            <p class="text-secondary small mb-3">Generate VAPID keys required for browser push notifications.</p>
+            <form method="POST" action="<?php echo admin_area_url('settings.php'); ?>" onsubmit="return confirm('This will generate new keys. If you already have subscribers, they may need to resubscribe. Proceed?');">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="generate_vapid" value="1">
+                <button type="submit" class="btn btn-outline-custom btn-sm w-100"><i class="fa-solid fa-key"></i> Generate VAPID Keys</button>
+            </form>
         </div>
     </div>
 </div>

@@ -163,6 +163,12 @@ function notification_type_label($type)
     if ($type == 'new_post') {
         return 'Update';
     }
+    if ($type == 'mention') {
+        return 'Mention';
+    }
+    if ($type == 'dm') {
+        return 'Message';
+    }
     return 'Alert';
 }
 
@@ -978,6 +984,12 @@ function notification_icon($type)
     }
     if ($type == 'incident_update') {
         return 'fa-shield-heart text-info';
+    }
+    if ($type == 'mention') {
+        return 'fa-at text-warning';
+    }
+    if ($type == 'dm') {
+        return 'fa-comments text-info';
     }
     return 'fa-bell text-secondary';
 }

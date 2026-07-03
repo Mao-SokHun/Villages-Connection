@@ -21,6 +21,19 @@ if ($action == 'mark_read' || $action == 'mark_all') {
     ));
 }
 
+// User search (for @mentions and DM new conversation)
+if ($action === 'search_users') {
+    $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+    $users = search_authors($pdo, $q, 8);
+    $result = array();
+    foreach ($users as $u) {
+        if ((int) $u['id'] === (int) $_SESSION['user_id']) continue;
+        $result[] = array('id' => (int) $u['id'], 'name' => $u['name']);
+    }
+    echo json_encode(array('users' => $result));
+    exit;
+}
+
 $user_id = (int) $_SESSION['user_id'];
 
 if ($action == 'mark_read' && isset($_POST['id'])) {

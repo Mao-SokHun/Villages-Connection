@@ -38,6 +38,10 @@ $migrations = array(
     'migrate_phase25.php',
     'migrate_add_posts_index.php',
     'migrate_missing_indexes.php',
+    'migrate_dm.php',
+    'migrate_polls.php',
+    'migrate_events.php',
+    'migrate_reactions.php',
 );
 
 try {
