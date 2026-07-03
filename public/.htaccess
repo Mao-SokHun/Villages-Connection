@@ -1,3 +1,5 @@
+DirectoryIndex router.php
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     # If the requested file or directory exists, serve it
