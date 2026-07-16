@@ -1,0 +1,1 @@
+<?php echo "Value of pdo inside: " . (isset($pdo) ? $pdo : "NULL"); ?>

@@ -1,0 +1,1 @@
+<?php global $pdo; $pdo = "connected"; ?>
