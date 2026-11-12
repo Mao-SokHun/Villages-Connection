@@ -79,7 +79,7 @@ if (isAdmin() && isset($pdo)) {
             <i class="fa-solid fa-trophy"></i><span><?php echo __('admin.challenges'); ?></span>
         </a>
         <a href="<?php echo admin_area_url('events.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'events') echo 'active'; ?>">
-            <i class="fa-solid fa-calendar-star"></i><span>Events</span>
+            <i class="fa-solid fa-calendar-days"></i><span>Events</span>
         </a>
         <a href="<?php echo admin_area_url('polls.php'); ?>" class="dash-toolbar-tab <?php if ($admin_page == 'polls') echo 'active'; ?>">
             <i class="fa-solid fa-square-poll-vertical"></i><span>Polls</span>

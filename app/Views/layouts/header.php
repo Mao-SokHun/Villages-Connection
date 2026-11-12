@@ -197,8 +197,8 @@ if (!isset($canonical_url) || $canonical_url == '') {
                 </li>
                 <?php endif; ?>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-custom <?php if ($current_page == 'events.php') echo 'active'; ?>" href="<?php echo app_url('events.php'); ?>">
-                        <i class="fa-solid fa-calendar-star"></i><span>Events</span>
+                    <a class="nav-link nav-link-custom <?php if ($current_page == 'events.php') echo 'active'; ?>" href="<?php echo app_url('events.php'); ?>" title="Events">
+                        <i class="fa-solid fa-calendar-days"></i><span>Events</span>
                     </a>
                 </li>
                 <li class="nav-item dropdown nav-support-dropdown">

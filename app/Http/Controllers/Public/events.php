@@ -42,7 +42,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
 ?>
 
 <div class="glass-panel p-4 p-md-5 mb-4 reveal">
-    <h1 class="text-white mb-2"><i class="fa-solid fa-calendar-star text-warning me-2"></i> Community Events</h1>
+    <h1 class="text-white mb-2"><i class="fa-solid fa-calendar-days text-warning me-2"></i> Community Events</h1>
     <p class="text-secondary mb-0">Discover and RSVP to local events, meetings, and gatherings.</p>
 </div>
 
@@ -161,7 +161,7 @@ require_once ROOT_PATH . '/app/Views/layouts/header.php';
         </div>
         <?php else: ?>
         <div class="glass-panel p-4 text-center reveal">
-            <i class="fa-solid fa-calendar-star fa-2x text-warning mb-3"></i>
+            <i class="fa-solid fa-calendar-days fa-2x text-warning mb-3"></i>
             <p class="text-secondary">Click an event to see details and RSVP.</p>
         </div>
         <?php endif; ?>

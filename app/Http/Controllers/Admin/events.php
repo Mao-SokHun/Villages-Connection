@@ -73,7 +73,7 @@ require_once ROOT_PATH . '/app/Views/layouts/admin-nav.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <h2 class="text-white mb-0"><i class="fa-solid fa-calendar-star text-warning me-2"></i> Events</h2>
+    <h2 class="text-white mb-0"><i class="fa-solid fa-calendar-days text-warning me-2"></i> Events</h2>
     <a href="?action=add" class="btn btn-gradient btn-sm"><i class="fa-solid fa-plus"></i> Add Event</a>
 </div>
 
