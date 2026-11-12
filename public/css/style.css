@@ -394,6 +394,7 @@ h1, h2, h3, h4, h5, h6 {
 .auth-form-wrap .brand-mark {
     color: var(--heading-color);
 }
+[data-theme="light"] .footer-brand-link .brand-mark,
 [data-theme="light"] .auth-side .brand-mark {
     color: #000000;
 }

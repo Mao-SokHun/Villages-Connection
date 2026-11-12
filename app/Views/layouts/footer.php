@@ -16,6 +16,8 @@
                         <ul class="list-unstyled footer-link-list mb-0">
                             <li><a href="<?php echo app_url('index.php'); ?>" class="footer-link"><?php echo __('footer.feed'); ?></a></li>
                             <li><a href="<?php echo feed_url(array('sort' => 'popular')); ?>" class="footer-link"><?php echo __('footer.popular'); ?></a></li>
+                            <li><a href="<?php echo app_url('events.php'); ?>" class="footer-link">Events</a></li>
+                            <li><a href="<?php echo app_url('challenges.php'); ?>" class="footer-link">Challenges</a></li>
                             <li><a href="<?php echo app_url('about.php'); ?>" class="footer-link"><?php echo __('footer.about'); ?></a></li>
                         </ul>
                     </div>
@@ -26,6 +28,7 @@
                             <li><a href="<?php echo app_url('faq.php'); ?>" class="footer-link"><?php echo __('nav.faq'); ?></a></li>
                             <li><a href="<?php echo app_url('help-us.php'); ?>" class="footer-link"><?php echo __('nav.help_us'); ?></a></li>
                             <li><a href="<?php echo app_url('contact.php'); ?>" class="footer-link"><?php echo __('nav.contact'); ?></a></li>
+                            <li><a href="<?php echo app_url('incident-report.php'); ?>" class="footer-link">Incident Report</a></li>
                             <li><a href="<?php echo app_url('report.php'); ?>" class="footer-link"><?php echo __('nav.report'); ?></a></li>
                             <?php if (!isLoggedIn()): ?>
                             <li><a href="<?php echo app_url('login.php'); ?>" class="footer-link"><?php echo __('nav.sign_in'); ?></a></li>
